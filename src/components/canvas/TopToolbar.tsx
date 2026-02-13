@@ -1,0 +1,85 @@
+import { useCanvas } from '@/contexts/CanvasContext';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Undo2, Redo2, Save, Download, Layers, History } from 'lucide-react';
+import logo from '@/assets/logo.jpeg';
+import { useRef } from 'react';
+
+const TopToolbar = () => {
+  const {
+    undo, redo, canUndo, canRedo, save, exportPNG, exportJSON, importJSON,
+    setShowLayers, setShowVersions, mode, setMode,
+  } = useCanvas();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = () => fileRef.current?.click();
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => importJSON(ev.target?.result as string);
+      reader.readAsText(file);
+    }
+    e.target.value = '';
+  };
+
+  return (
+    <header className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-card shrink-0">
+      <div className="flex items-center gap-2">
+        <img src={logo} alt="UrbanRewear" className="h-8 w-8 rounded-md object-cover" />
+        <span className="gradient-text font-bold text-sm hidden sm:inline">UrbanRewear</span>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" onClick={undo} disabled={!canUndo} className="h-8 w-8">
+          <Undo2 className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={redo} disabled={!canRedo} className="h-8 w-8">
+          <Redo2 className="h-4 w-4" />
+        </Button>
+
+        <div className="flex bg-secondary rounded-md p-0.5 mx-2">
+          <button
+            onClick={() => setMode('design')}
+            className={`px-3 py-1 text-xs rounded-sm transition-colors ${mode === 'design' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            Design
+          </button>
+          <button
+            onClick={() => setMode('preview')}
+            className={`px-3 py-1 text-xs rounded-sm transition-colors ${mode === 'preview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            AI Preview
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" onClick={save} className="h-8 w-8">
+          <Save className="h-4 w-4" />
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8"><Download className="h-4 w-4" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportPNG}>Export PNG</DropdownMenuItem>
+            <DropdownMenuItem onClick={exportJSON}>Export JSON</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleImport}>Import JSON</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" size="icon" onClick={() => setShowVersions(true)} className="h-8 w-8">
+          <History className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => setShowLayers(true)} className="h-8 w-8">
+          <Layers className="h-4 w-4" />
+        </Button>
+        <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFile} />
+      </div>
+    </header>
+  );
+};
+
+export default TopToolbar;
