@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Stage, Layer, Line, Rect, Circle, RegularPolygon, Star, Arrow, Text, Image as KImage, Transformer } from 'react-konva';
 import { useCanvas } from '@/contexts/CanvasContext';
 import { generateId, getDash, CanvasObject } from '@/types/canvas';
+import { useConfig } from '@/contexts/ConfigContext';
 
 const URLImage = ({ src, ...props }: { src: string; [key: string]: any }) => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
@@ -20,6 +21,7 @@ const CanvasStage = () => {
     fontSize, fontFamily, fontStyle: fStyle, objects, pushHistory, setObjectsDirect,
     selectedIds, setSelectedIds, backgroundImage, stageRef, setTool,
   } = useCanvas();
+  const { config } = useConfig();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const transformerRef = useRef<any>(null);
@@ -40,7 +42,6 @@ const CanvasStage = () => {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  // Load background image
   useEffect(() => {
     if (!backgroundImage) { setBgImage(null); return; }
     const img = new window.Image();
@@ -48,7 +49,6 @@ const CanvasStage = () => {
     img.onload = () => setBgImage(img);
   }, [backgroundImage]);
 
-  // Attach transformer
   useEffect(() => {
     if (!transformerRef.current || !stageRef.current) return;
     const stage = stageRef.current;
@@ -218,13 +218,15 @@ const CanvasStage = () => {
     pushHistory([...objects]);
   };
 
-  // Compute background image dimensions
   const bgProps = bgImage ? (() => {
     const scale = Math.min(stageSize.width / bgImage.width, stageSize.height / bgImage.height);
     const w = bgImage.width * scale;
     const h = bgImage.height * scale;
     return { image: bgImage, x: (stageSize.width - w) / 2, y: (stageSize.height - h) / 2, width: w, height: h };
   })() : null;
+
+  // Canvas bg fill adapts to theme
+  const canvasBg = config.theme === 'dark' ? 'hsl(240, 10%, 8%)' : 'hsl(0, 0%, 95%)';
 
   const renderObject = (obj: CanvasObject) => {
     const common = {
@@ -280,12 +282,10 @@ const CanvasStage = () => {
         onTouchEnd={handlePointerUp}
         style={{ cursor: tool === 'brush' ? 'crosshair' : tool === 'eraser' ? 'cell' : tool === 'text' ? 'text' : 'default' }}
       >
-        {/* Background layer */}
         <Layer>
-          <Rect x={0} y={0} width={stageSize.width} height={stageSize.height} fill="hsl(240, 10%, 8%)" />
+          <Rect x={0} y={0} width={stageSize.width} height={stageSize.height} fill={canvasBg} />
           {bgProps && <KImage {...bgProps} />}
         </Layer>
-        {/* Objects layer */}
         <Layer>
           {objects.map(renderObject)}
           <Transformer

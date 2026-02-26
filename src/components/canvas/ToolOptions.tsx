@@ -1,4 +1,5 @@
 import { useCanvas } from '@/contexts/CanvasContext';
+import { useConfig } from '@/contexts/ConfigContext';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ const ToolOptions = () => {
     groupSelected, ungroupSelected, addRecentColor, recentColors,
     setBackgroundImage, setObjectsDirect,
   } = useCanvas();
+  const { config } = useConfig();
   const clothRef = useRef<HTMLInputElement>(null);
   const assetRef = useRef<HTMLInputElement>(null);
 
@@ -64,7 +66,6 @@ const ToolOptions = () => {
     e.target.value = '';
   };
 
-  // Selected text object for editing
   const selectedText = selectedIds.length === 1 ? objects.find(o => o.id === selectedIds[0] && o.type === 'text') : null;
 
   const updateSelectedText = (updates: Record<string, any>) => {
@@ -94,11 +95,11 @@ const ToolOptions = () => {
               <Input
                 value={selectedText.text || ''}
                 onChange={e => updateSelectedText({ text: e.target.value })}
-                className="h-8 text-xs flex-1 min-w-[120px]"
+                className="h-8 text-xs flex-1 min-w-[100px]"
                 placeholder="Text content"
               />
               <Select value={selectedText.fontFamily || 'Arial'} onValueChange={v => updateSelectedText({ fontFamily: v })}>
-                <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-8 w-24 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {FONT_FAMILIES.map(f => <SelectItem key={f} value={f} style={{ fontFamily: f }}>{f}</SelectItem>)}
                 </SelectContent>
@@ -106,7 +107,7 @@ const ToolOptions = () => {
               <Input
                 type="number" value={selectedText.fontSize || 24} min={8} max={200}
                 onChange={e => updateSelectedText({ fontSize: Number(e.target.value) })}
-                className="h-8 w-16 text-xs"
+                className="h-8 w-14 text-xs"
               />
               <Button variant={selectedText.fontStyle?.includes('bold') ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8"
                 onClick={() => updateSelectedText({ fontStyle: selectedText.fontStyle?.includes('bold') ? selectedText.fontStyle.replace('bold', '').trim() || 'normal' : (selectedText.fontStyle === 'normal' ? 'bold' : 'bold ' + selectedText.fontStyle) })}>
@@ -155,7 +156,7 @@ const ToolOptions = () => {
       {/* Shape tools */}
       {['line', 'rect', 'circle', 'triangle', 'star', 'arrow', 'polygon'].includes(tool) && (
         <div className="space-y-2">
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center flex-wrap">
             <span className="text-xs text-muted-foreground">Stroke</span>
             <input type="color" value={strokeColor} onChange={e => { setStrokeColor(e.target.value); addRecentColor(e.target.value); }} className="w-7 h-7 rounded border-0 cursor-pointer bg-transparent" />
             {tool !== 'line' && tool !== 'arrow' && (
@@ -179,14 +180,14 @@ const ToolOptions = () => {
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">Tap on canvas to place text</p>
           <ColorRow colors={PRESET_COLORS} recentColors={recentColors} selected={strokeColor} onChange={handleColorChange} />
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Select value={fontFamily} onValueChange={setFontFamily}>
-              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-8 text-xs flex-1 min-w-[100px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {FONT_FAMILIES.map(f => <SelectItem key={f} value={f} style={{ fontFamily: f }}>{f}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input type="number" value={fontSize} min={8} max={200} onChange={e => setFontSize(Number(e.target.value))} className="h-8 w-16 text-xs" />
+            <Input type="number" value={fontSize} min={8} max={200} onChange={e => setFontSize(Number(e.target.value))} className="h-8 w-14 text-xs" />
             <Button variant={fontStyle.includes('bold') ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8"
               onClick={() => setFontStyle(fontStyle.includes('bold') ? fontStyle.replace('bold', '').trim() || 'normal' : fontStyle === 'normal' ? 'bold' : 'bold ' + fontStyle)}>
               <Bold className="h-3.5 w-3.5" />
@@ -201,14 +202,19 @@ const ToolOptions = () => {
 
       {/* Image tool */}
       {tool === 'image' && (
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={() => clothRef.current?.click()} className="text-xs">
-            <ImagePlus className="h-3.5 w-3.5 mr-1" /> Upload Clothing
-          </Button>
+        <div className="flex gap-2 flex-wrap">
+          {config.allowClothUpload && (
+            <Button variant="secondary" size="sm" onClick={() => clothRef.current?.click()} className="text-xs">
+              <ImagePlus className="h-3.5 w-3.5 mr-1" /> Upload Clothing
+            </Button>
+          )}
+          {!config.allowClothUpload && (
+            <p className="text-xs text-muted-foreground py-1">Clothing images are loaded from backend.</p>
+          )}
           <Button variant="secondary" size="sm" onClick={() => assetRef.current?.click()} className="text-xs">
             <ImagePlus className="h-3.5 w-3.5 mr-1" /> Upload Asset
           </Button>
-          <input ref={clothRef} type="file" accept="image/*" className="hidden" onChange={handleClothUpload} />
+          {config.allowClothUpload && <input ref={clothRef} type="file" accept="image/*" className="hidden" onChange={handleClothUpload} />}
           <input ref={assetRef} type="file" accept="image/*" className="hidden" onChange={handleAssetUpload} />
         </div>
       )}
