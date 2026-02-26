@@ -4,7 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-// cache-bust: react-konva v18
+// force rebuild deps for react 19 + react-konva 19
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+  },
+  optimizeDeps: {
+    force: true,
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
