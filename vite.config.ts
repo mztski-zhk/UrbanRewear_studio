@@ -4,6 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
+// cache-bust: react-konva v18
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
