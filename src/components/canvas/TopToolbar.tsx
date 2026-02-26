@@ -1,9 +1,10 @@
 import { useCanvas } from '@/contexts/CanvasContext';
+import { useConfig } from '@/contexts/ConfigContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Undo2, Redo2, Save, Download, Layers, History } from 'lucide-react';
+import { Undo2, Redo2, Save, Download, Layers, History, Sun, Moon, Bug } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { useRef } from 'react';
 
@@ -12,6 +13,7 @@ const TopToolbar = () => {
     undo, redo, canUndo, canRedo, save, exportPNG, exportJSON, importJSON,
     setShowLayers, setShowVersions, mode, setMode,
   } = useCanvas();
+  const { config, setTheme, toggleDebug } = useConfig();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleImport = () => fileRef.current?.click();
@@ -27,12 +29,12 @@ const TopToolbar = () => {
 
   return (
     <header className="flex items-center justify-between px-2 py-1.5 border-b border-border bg-card shrink-0">
-      <div className="flex items-center gap-2">
-        <img src={logo} alt="UrbanRewear" className="h-8 w-8 rounded-md object-cover" />
-        <span className="gradient-text font-bold text-sm hidden sm:inline">UrbanRewear</span>
+      <div className="flex items-center gap-1.5">
+        <img src={logo} alt="UrbanRewear" className="h-7 w-7 rounded-md object-cover" />
+        <span className="gradient-text font-bold text-sm hidden sm:inline">{config.appName}</span>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <Button variant="ghost" size="icon" onClick={undo} disabled={!canUndo} className="h-8 w-8">
           <Undo2 className="h-4 w-4" />
         </Button>
@@ -40,23 +42,34 @@ const TopToolbar = () => {
           <Redo2 className="h-4 w-4" />
         </Button>
 
-        <div className="flex bg-secondary rounded-md p-0.5 mx-2">
+        <div className="flex bg-secondary rounded-md p-0.5 mx-1">
           <button
             onClick={() => setMode('design')}
-            className={`px-3 py-1 text-xs rounded-sm transition-colors ${mode === 'design' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`px-2 py-1 text-[11px] rounded-sm transition-colors ${mode === 'design' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Design
           </button>
           <button
             onClick={() => setMode('preview')}
-            className={`px-3 py-1 text-xs rounded-sm transition-colors ${mode === 'preview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`px-2 py-1 text-[11px] rounded-sm transition-colors ${mode === 'preview' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            AI Preview
+            AI
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
+        <Button
+          variant="ghost" size="icon" className="h-8 w-8"
+          onClick={() => setTheme(config.theme === 'dark' ? 'light' : 'dark')}
+        >
+          {config.theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
+        {config.debugMode && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={toggleDebug}>
+            <Bug className="h-4 w-4" />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" onClick={save} className="h-8 w-8">
           <Save className="h-4 w-4" />
         </Button>
@@ -68,6 +81,9 @@ const TopToolbar = () => {
             <DropdownMenuItem onClick={exportPNG}>Export PNG</DropdownMenuItem>
             <DropdownMenuItem onClick={exportJSON}>Export JSON</DropdownMenuItem>
             <DropdownMenuItem onClick={handleImport}>Import JSON</DropdownMenuItem>
+            {!config.debugMode && (
+              <DropdownMenuItem onClick={toggleDebug}>Enable Debug</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         <Button variant="ghost" size="icon" onClick={() => setShowVersions(true)} className="h-8 w-8">
