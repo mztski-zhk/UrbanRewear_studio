@@ -7,6 +7,7 @@ import {
 import { Undo2, Redo2, Save, Download, Layers, History, Sun, Moon, Bug } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { useRef } from 'react';
+import AuthPanel from './AuthPanel';
 
 const TopToolbar = () => {
   const {
@@ -93,6 +94,7 @@ const TopToolbar = () => {
           <Layers className="h-4 w-4" />
         </Button>
         <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFile} />
+        <AuthPanel />
       </div>
     </header>
   );
