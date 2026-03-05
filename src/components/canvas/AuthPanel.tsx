@@ -8,8 +8,15 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, LogOut, Loader2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { User, LogOut, Loader2, Pencil, KeyRound, Trash2, ChevronLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+
+type ProfileSubView = 'overview' | 'edit' | 'password';
 
 const AuthPanel = () => {
   const { isAuthenticated, user, login, signup, logout, isLoading } = useAuth();
@@ -58,15 +65,14 @@ const AuthPanel = () => {
   );
 };
 
+/* ─── Login / Signup Forms ─────────────────────────────────────────── */
 const AuthForms = ({ onSuccess }: { onSuccess: () => void }) => {
   const { login, signup } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  // Login
   const [loginId, setLoginId] = useState('');
   const [loginPw, setLoginPw] = useState('');
 
-  // Signup
   const [signupUser, setSignupUser] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPw, setSignupPw] = useState('');
@@ -90,7 +96,6 @@ const AuthForms = ({ onSuccess }: { onSuccess: () => void }) => {
     setLoading(true);
     try {
       await signup({ username: signupUser, email: signupEmail, password: signupPw });
-      // Auto-login after signup
       await login(signupEmail, signupPw);
       onSuccess();
     } catch (err) {
@@ -148,14 +153,25 @@ const AuthForms = ({ onSuccess }: { onSuccess: () => void }) => {
   );
 };
 
+/* ─── Profile View (with sub-navigation) ───────────────────────────── */
 const ProfileView = ({ onClose }: { onClose: () => void }) => {
-  const { user, logout, token } = useAuth();
+  const { user, logout, updateProfile, changePassword, deleteAccount } = useAuth();
+  const [subView, setSubView] = useState<ProfileSubView>('overview');
+
   if (!user) return null;
 
   const handleLogout = () => {
     logout();
     onClose();
   };
+
+  if (subView === 'edit') {
+    return <EditProfileForm user={user} onBack={() => setSubView('overview')} onSave={updateProfile} />;
+  }
+
+  if (subView === 'password') {
+    return <ChangePasswordForm onBack={() => setSubView('overview')} onSave={changePassword} />;
+  }
 
   return (
     <div className="mt-4 space-y-4">
@@ -170,7 +186,7 @@ const ProfileView = ({ onClose }: { onClose: () => void }) => {
       <div className="space-y-1 text-xs">
         <div className="flex justify-between py-1.5 border-b border-border">
           <span className="text-muted-foreground">User ID</span>
-          <span className="text-foreground font-mono text-[10px]">{user.uid.slice(0, 8)}…</span>
+          <span className="text-foreground font-mono text-[10px]">{user.uid.slice(0, 8)}...</span>
         </div>
         {user.phone_num && (
           <div className="flex justify-between py-1.5 border-b border-border">
@@ -184,9 +200,161 @@ const ProfileView = ({ onClose }: { onClose: () => void }) => {
         </div>
       </div>
 
+      <div className="space-y-2">
+        <Button variant="outline" className="w-full justify-start text-xs h-9" onClick={() => setSubView('edit')}>
+          <Pencil className="h-3.5 w-3.5 mr-2" /> Edit Profile
+        </Button>
+        <Button variant="outline" className="w-full justify-start text-xs h-9" onClick={() => setSubView('password')}>
+          <KeyRound className="h-3.5 w-3.5 mr-2" /> Change Password
+        </Button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="w-full justify-start text-xs h-9 text-destructive border-destructive/30 hover:bg-destructive/10">
+              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete Account
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action is permanent and cannot be undone. All of your data, analyzed clothes, and designs will be removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={async () => {
+                  try {
+                    await deleteAccount();
+                    onClose();
+                  } catch (err) {
+                    const msg = err instanceof ApiError ? err.message : 'Delete failed';
+                    toast({ title: 'Error', description: msg, variant: 'destructive' });
+                  }
+                }}
+              >
+                Delete permanently
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
       <Button variant="outline" className="w-full text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleLogout}>
         <LogOut className="h-4 w-4 mr-2" /> Sign Out
       </Button>
+    </div>
+  );
+};
+
+/* ─── Edit Profile Sub-View ────────────────────────────────────────── */
+const EditProfileForm = ({
+  user,
+  onBack,
+  onSave,
+}: {
+  user: { username: string; email: string; phone_num?: string };
+  onBack: () => void;
+  onSave: (data: { username?: string; email?: string; phone_num?: string }) => Promise<void>;
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState(user.username);
+  const [email, setEmail] = useState(user.email);
+  const [phone, setPhone] = useState(user.phone_num || '');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await onSave({ username, email, phone_num: phone || undefined });
+      onBack();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Update failed';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <button onClick={onBack} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors">
+        <ChevronLeft className="h-3.5 w-3.5" /> Back to profile
+      </button>
+      <h3 className="text-sm font-semibold text-foreground mb-3">Edit Profile</h3>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <Label htmlFor="edit-username" className="text-xs text-muted-foreground">Username</Label>
+          <Input id="edit-username" value={username} onChange={e => setUsername(e.target.value)} required minLength={6} maxLength={20} className="h-9 text-sm" />
+        </div>
+        <div>
+          <Label htmlFor="edit-email" className="text-xs text-muted-foreground">Email</Label>
+          <Input id="edit-email" type="email" value={email} onChange={e => setEmail(e.target.value)} required className="h-9 text-sm" />
+        </div>
+        <div>
+          <Label htmlFor="edit-phone" className="text-xs text-muted-foreground">Phone (optional)</Label>
+          <Input id="edit-phone" value={phone} onChange={e => setPhone(e.target.value)} className="h-9 text-sm" placeholder="+1234567890" />
+        </div>
+        <Button type="submit" className="w-full gradient-bg text-primary-foreground h-9 text-xs" disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
+        </Button>
+      </form>
+    </div>
+  );
+};
+
+/* ─── Change Password Sub-View ─────────────────────────────────────── */
+const ChangePasswordForm = ({
+  onBack,
+  onSave,
+}: {
+  onBack: () => void;
+  onSave: (password: string) => Promise<void>;
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password !== confirm) {
+      toast({ title: 'Error', description: 'Passwords do not match.', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await onSave(password);
+      onBack();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Password change failed';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <button onClick={onBack} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4 transition-colors">
+        <ChevronLeft className="h-3.5 w-3.5" /> Back to profile
+      </button>
+      <h3 className="text-sm font-semibold text-foreground mb-3">Change Password</h3>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div>
+          <Label htmlFor="new-pw" className="text-xs text-muted-foreground">New Password</Label>
+          <Input id="new-pw" type="password" value={password} onChange={e => setPassword(e.target.value)} required className="h-9 text-sm" />
+          <p className="text-[10px] text-muted-foreground mt-1">Must contain uppercase, digit, and special character</p>
+        </div>
+        <div>
+          <Label htmlFor="confirm-pw" className="text-xs text-muted-foreground">Confirm Password</Label>
+          <Input id="confirm-pw" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required className="h-9 text-sm" />
+        </div>
+        <Button type="submit" className="w-full gradient-bg text-primary-foreground h-9 text-xs" disabled={loading}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Update Password'}
+        </Button>
+      </form>
     </div>
   );
 };

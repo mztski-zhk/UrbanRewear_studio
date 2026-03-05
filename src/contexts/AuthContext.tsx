@@ -1,5 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { login as apiLogin, signup as apiSignup, getProfile, type UserProfile, type SignupData, type TokenResponse, ApiError } from '@/services/api';
+import {
+  login as apiLogin,
+  signup as apiSignup,
+  getProfile,
+  updateProfile as apiUpdateProfile,
+  changePassword as apiChangePassword,
+  deleteAccount as apiDeleteAccount,
+  type UserProfile,
+  type SignupData,
+  type ProfileUpdateData,
+  type TokenResponse,
+  ApiError,
+} from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -11,6 +23,9 @@ interface AuthContextType {
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
+  updateProfile: (data: ProfileUpdateData) => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -61,11 +76,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     toast({ title: 'Account created', description: 'You can now log in.' });
   };
 
+  const updateProfileHandler = async (data: ProfileUpdateData) => {
+    if (!token || !user) throw new Error('Not authenticated');
+    await apiUpdateProfile(user.uid, data, token);
+    await refreshProfile();
+    toast({ title: 'Profile updated', description: 'Your information has been saved.' });
+  };
+
+  const changePasswordHandler = async (newPassword: string) => {
+    if (!token || !user) throw new Error('Not authenticated');
+    await apiChangePassword(user.uid, newPassword, token);
+    toast({ title: 'Password changed', description: 'Your password has been updated.' });
+  };
+
+  const deleteAccountHandler = async () => {
+    if (!token || !user) throw new Error('Not authenticated');
+    await apiDeleteAccount(user.uid, token);
+    logout();
+    toast({ title: 'Account deleted', description: 'Your account has been permanently removed.' });
+  };
+
   return (
     <AuthContext.Provider value={{
       token, user, isLoading,
       isAuthenticated: !!token && !!user,
       login, signup, logout, refreshProfile,
+      updateProfile: updateProfileHandler,
+      changePassword: changePasswordHandler,
+      deleteAccount: deleteAccountHandler,
     }}>
       {children}
     </AuthContext.Provider>
