@@ -1,0 +1,187 @@
+const BASE_URL = 'https://ur.mztski-zhk.cc/api/v1';
+
+class ApiError extends Error {
+  code: string;
+  requestId?: string;
+  status: number;
+
+  constructor(status: number, body: any) {
+    const err = body?.error || {};
+    super(err.message || 'Request failed');
+    this.code = err.code || 'UNKNOWN';
+    this.requestId = err.request_id;
+    this.status = status;
+  }
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  token?: string | null
+): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> || {}),
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  // Don't set Content-Type for FormData
+  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, body);
+  }
+
+  return res.json();
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export async function login(username: string, password: string): Promise<TokenResponse> {
+  const body = new URLSearchParams();
+  body.append('username', username);
+  body.append('password', password);
+
+  return request<TokenResponse>('/auth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+}
+
+export interface SignupData {
+  username: string;
+  password: string;
+  email: string;
+  phone_num?: string;
+  homeaddress?: Record<string, string>;
+}
+
+export async function signup(data: SignupData) {
+  return request('/users/signup', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ─── User Profile ────────────────────────────────────────────────────
+export interface UserProfile {
+  uid: string;
+  username: string;
+  email: string;
+  phone_num?: string;
+  homeaddress?: Record<string, any>;
+  disabled: boolean;
+}
+
+export async function getProfile(token: string): Promise<UserProfile> {
+  return request<UserProfile>('/users/me', {}, token);
+}
+
+export async function updateProfile(uid: string, data: Partial<UserProfile>, token: string) {
+  return request(`/users/${uid}`, { method: 'POST', body: JSON.stringify(data) }, token);
+}
+
+export async function changePassword(uid: string, newPassword: string, token: string) {
+  return request(`/users/${uid}`, {
+    method: 'PUT',
+    body: JSON.stringify({ new_password: newPassword }),
+  }, token);
+}
+
+export async function deleteAccount(uid: string, token: string) {
+  return request(`/users/${uid}`, { method: 'DELETE' }, token);
+}
+
+// ─── Cloth Analysis ──────────────────────────────────────────────────
+export interface ClothCondition {
+  file_id: string;
+  condition: {
+    cloth_details: {
+      image: string;
+      cloth_type: string;
+      cloth_fabric: string;
+      is_dirty_or_damaged: boolean;
+      damage_description?: string;
+      suitable_for_redesign: boolean;
+      suitable_for_upcycling: boolean;
+    };
+  };
+}
+
+export async function analyzeCloth(
+  userId: string,
+  frontImage: File,
+  backImage: File,
+  token: string,
+  useLocal = false
+): Promise<ClothCondition> {
+  const formData = new FormData();
+  formData.append('cloth_front', frontImage);
+  formData.append('cloth_back', backImage);
+  const prefix = useLocal ? '/localcloth' : '/cloth';
+  return request<ClothCondition>(`${prefix}/${userId}/conditions/`, {
+    method: 'POST',
+    body: formData,
+  }, token);
+}
+
+export interface RedesignResult {
+  file_id: string;
+  after_file_id: string;
+  redesign_analysis?: {
+    cloth_details: {
+      suitable_for_redesign: boolean;
+      redesign_suggestions: string[];
+    };
+  };
+}
+
+export async function redesignCloth(
+  userId: string,
+  images: { before_front: File; before_back: File; after_front?: File; after_back?: File },
+  token: string,
+  useLocal = false
+): Promise<RedesignResult> {
+  const formData = new FormData();
+  formData.append('before_cloth_front', images.before_front);
+  formData.append('before_cloth_back', images.before_back);
+  if (images.after_front) formData.append('after_cloth_front', images.after_front);
+  if (images.after_back) formData.append('after_cloth_back', images.after_back);
+  const prefix = useLocal ? '/localcloth' : '/cloth';
+  return request<RedesignResult>(`${prefix}/${userId}/redesign/`, {
+    method: 'PUT',
+    body: formData,
+  }, token);
+}
+
+// ─── Objects ─────────────────────────────────────────────────────────
+export async function getUserObjects(userId: string, token: string) {
+  return request<{ objects: any[] }>(`/obj/${userId}`, {}, token);
+}
+
+// ─── Search ──────────────────────────────────────────────────────────
+export async function searchSimple(query: string, token: string, limit = 20, offset = 0) {
+  return request('/search/simple', {
+    method: 'POST',
+    body: JSON.stringify({ query, limit, offset }),
+  }, token);
+}
+
+export async function searchAutocomplete(q: string, token: string, limit = 10) {
+  return request(`/search/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`, {}, token);
+}
+
+// ─── Health ──────────────────────────────────────────────────────────
+export async function healthCheck() {
+  return request<{ status: string }>('/health', {}).catch(() => ({ status: 'unreachable' }));
+}
+
+export { ApiError };
