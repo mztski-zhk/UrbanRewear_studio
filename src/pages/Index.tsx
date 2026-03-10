@@ -4,164 +4,719 @@ import CanvasStage from '@/components/canvas/CanvasStage';
 import BottomPanel from '@/components/canvas/BottomPanel';
 import LayersPanel from '@/components/canvas/LayersPanel';
 import VersionHistory from '@/components/canvas/VersionHistory';
+import ObjectsGallery from '@/components/canvas/ObjectsGallery';
+import SearchPanel from '@/components/canvas/SearchPanel';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sparkles, Upload, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Sparkles,
+  Upload,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  Camera,
+  Shirt,
+  Recycle,
+  Paintbrush,
+  Package,
+  Search,
+  Image as ImageIcon,
+  FileImage,
+  Trash2,
+  History,
+  Zap,
+} from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { analyzeCloth, redesignCloth, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
+import { analyzeCloth, redesignCloth, healthCheck, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
+interface ImagePreviewProps {
+  file: File | null;
+  label: string;
+  onClear: () => void;
+}
+
+const ImagePreview = ({ file, label, onClear }: ImagePreviewProps) => {
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreview(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setPreview(null);
+  }, [file]);
+
+  if (!file) return null;
+
+  return (
+    <div className="relative group">
+      <img
+        src={preview || ''}
+        alt={label}
+        className="w-full h-24 object-cover rounded-md border border-border"
+      />
+      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-md flex items-center justify-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 bg-background/80 hover:bg-background"
+          onClick={onClear}
+        >
+          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+        </Button>
+      </div>
+      <Badge
+        variant="secondary"
+        className="absolute bottom-1 left-1 text-[9px] h-4 bg-background/80"
+      >
+        {label}
+      </Badge>
+    </div>
+  );
+};
+
 const AIPreview = () => {
-  const { stageRef, objects, backgroundImage } = useCanvas();
+  const { stageRef } = useCanvas();
   const { token, user, isAuthenticated } = useAuth();
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<'analyze' | 'redesign' | null>(null);
+  const [progress, setProgress] = useState(0);
   const [analysisResult, setAnalysisResult] = useState<ClothCondition | null>(null);
   const [redesignResult, setRedesignResult] = useState<RedesignResult | null>(null);
+  const [analysisHistory, setAnalysisHistory] = useState<ClothCondition[]>([]);
   const frontRef = useRef<HTMLInputElement>(null);
   const backRef = useRef<HTMLInputElement>(null);
+  const afterFrontRef = useRef<HTMLInputElement>(null);
+  const afterBackRef = useRef<HTMLInputElement>(null);
   const [frontFile, setFrontFile] = useState<File | null>(null);
   const [backFile, setBackFile] = useState<File | null>(null);
+  const [afterFrontFile, setAfterFrontFile] = useState<File | null>(null);
+  const [afterBackFile, setAfterBackFile] = useState<File | null>(null);
   const [useLocal, setUseLocal] = useState(false);
+  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  // Check API health on mount
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const result = await healthCheck();
+        setApiStatus(result.status === 'ok' ? 'online' : 'offline');
+      } catch {
+        setApiStatus('offline');
+      }
+    };
+    checkHealth();
+  }, []);
 
   useEffect(() => {
     if (stageRef.current) {
       setPreviewImage(stageRef.current.toDataURL({ pixelRatio: 2 }));
     }
-  }, []);
+  }, [stageRef]);
 
-  const handleAnalyze = async () => {
+  // Simulate progress for better UX
+  useEffect(() => {
+    if (loading) {
+      setProgress(0);
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 15;
+        });
+      }, 500);
+      return () => clearInterval(interval);
+    } else {
+      setProgress(100);
+      const timeout = setTimeout(() => setProgress(0), 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading]);
+
+  const handleAnalyze = useCallback(async () => {
     if (!token || !user || !frontFile || !backFile) {
-      toast({ title: 'Missing data', description: 'Please upload front and back images and log in.', variant: 'destructive' });
+      toast({
+        title: 'Missing data',
+        description: 'Please upload front and back images and log in.',
+        variant: 'destructive',
+      });
       return;
     }
     setLoading(true);
+    setLoadingAction('analyze');
     setAnalysisResult(null);
     try {
       const result = await analyzeCloth(user.uid, frontFile, backFile, token, useLocal);
       setAnalysisResult(result);
-      toast({ title: 'Analysis complete', description: `Type: ${result.condition.cloth_details.cloth_type}` });
+      setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
+      toast({
+        title: 'Analysis complete',
+        description: `Type: ${result.condition.cloth_details.cloth_type}`,
+      });
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Analysis failed';
-      toast({ title: 'Error', description: msg, variant: 'destructive' });
+      const apiError = err instanceof ApiError ? err : null;
+      toast({
+        title: 'Analysis failed',
+        description: apiError?.message || 'An error occurred',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
+      setLoadingAction(null);
     }
-  };
+  }, [token, user, frontFile, backFile, useLocal]);
 
-  const handleRedesign = async () => {
+  const handleRedesign = useCallback(async () => {
     if (!token || !user || !frontFile || !backFile) {
-      toast({ title: 'Missing data', description: 'Please upload images first.', variant: 'destructive' });
+      toast({
+        title: 'Missing data',
+        description: 'Please upload before images first.',
+        variant: 'destructive',
+      });
       return;
     }
     setLoading(true);
+    setLoadingAction('redesign');
     setRedesignResult(null);
     try {
       const result = await redesignCloth(
         user.uid,
-        { before_front: frontFile, before_back: backFile },
+        {
+          before_front: frontFile,
+          before_back: backFile,
+          after_front: afterFrontFile || undefined,
+          after_back: afterBackFile || undefined,
+        },
         token,
         useLocal
       );
       setRedesignResult(result);
-      toast({ title: 'Redesign complete', description: 'AI suggestions are ready!' });
+      toast({
+        title: 'Redesign complete',
+        description: 'AI suggestions are ready!',
+      });
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Redesign failed';
-      toast({ title: 'Error', description: msg, variant: 'destructive' });
+      const apiError = err instanceof ApiError ? err : null;
+      toast({
+        title: 'Redesign failed',
+        description: apiError?.message || 'An error occurred',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
+      setLoadingAction(null);
     }
+  }, [token, user, frontFile, backFile, afterFrontFile, afterBackFile, useLocal]);
+
+  const clearAll = () => {
+    setFrontFile(null);
+    setBackFile(null);
+    setAfterFrontFile(null);
+    setAfterBackFile(null);
+    setAnalysisResult(null);
+    setRedesignResult(null);
   };
 
   if (!isAuthenticated) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
-        <AlertTriangle className="h-10 w-10 text-muted-foreground" />
-        <p className="text-muted-foreground text-sm text-center">Log in to use AI cloth analysis & redesign.</p>
+        <div className="relative">
+          <Shirt className="h-16 w-16 text-muted-foreground/30" />
+          <Sparkles className="h-6 w-6 text-primary absolute -top-1 -right-1" />
+        </div>
+        <div className="text-center space-y-2">
+          <h3 className="font-semibold text-foreground">AI Cloth Analysis</h3>
+          <p className="text-muted-foreground text-sm max-w-xs">
+            Log in to analyze your clothes with AI and get redesign suggestions
+          </p>
+        </div>
+        <Badge variant="outline" className="text-xs">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          Authentication required
+        </Badge>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col items-center gap-4 p-4 overflow-auto">
-      {/* Canvas preview */}
-      {previewImage && (
-        <img src={previewImage} alt="Design preview" className="max-w-full max-h-[30vh] rounded-lg border border-border shadow-lg" />
-      )}
-
-      {/* Image upload */}
-      <div className="w-full max-w-sm space-y-3">
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground">Front Image</Label>
-            <div className="mt-1">
-              <input ref={frontRef} type="file" accept="image/*" className="hidden" onChange={e => setFrontFile(e.target.files?.[0] || null)} />
-              <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => frontRef.current?.click()}>
-                <Upload className="h-3 w-3 mr-1" /> {frontFile ? frontFile.name.slice(0, 15) : 'Front'}
-              </Button>
-            </div>
+    <ScrollArea className="flex-1">
+      <div className="flex flex-col gap-4 p-4 max-w-lg mx-auto">
+        {/* Status bar */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={apiStatus === 'online' ? 'default' : apiStatus === 'offline' ? 'destructive' : 'secondary'}
+              className="text-[10px] h-5"
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full mr-1 ${
+                  apiStatus === 'online' ? 'bg-green-400' : apiStatus === 'offline' ? 'bg-red-400' : 'bg-yellow-400 animate-pulse'
+                }`}
+              />
+              {apiStatus === 'online' ? 'API Online' : apiStatus === 'offline' ? 'API Offline' : 'Checking...'}
+            </Badge>
+            {useLocal && (
+              <Badge variant="outline" className="text-[10px] h-5">
+                <Zap className="h-3 w-3 mr-1" />
+                Local AI
+              </Badge>
+            )}
           </div>
-          <div className="flex-1">
-            <Label className="text-xs text-muted-foreground">Back Image</Label>
-            <div className="mt-1">
-              <input ref={backRef} type="file" accept="image/*" className="hidden" onChange={e => setBackFile(e.target.files?.[0] || null)} />
-              <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => backRef.current?.click()}>
-                <Upload className="h-3 w-3 mr-1" /> {backFile ? backFile.name.slice(0, 15) : 'Back'}
-              </Button>
-            </div>
+          <div className="flex items-center gap-1">
+            <ObjectsGallery
+              trigger={
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <Package className="h-3.5 w-3.5" />
+                </Button>
+              }
+            />
+            <SearchPanel
+              trigger={
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <Search className="h-3.5 w-3.5" />
+                </Button>
+              }
+            />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-            <input type="checkbox" checked={useLocal} onChange={e => setUseLocal(e.target.checked)} className="rounded" />
-            Use local AI (faster)
-          </label>
-        </div>
+        {/* Progress bar */}
+        {loading && (
+          <div className="space-y-1">
+            <Progress value={progress} className="h-1" />
+            <p className="text-[10px] text-muted-foreground text-center">
+              {loadingAction === 'analyze' ? 'Analyzing cloth condition...' : 'Generating redesign suggestions...'}
+            </p>
+          </div>
+        )}
 
-        <div className="flex gap-2">
-          <Button onClick={handleAnalyze} disabled={loading || !frontFile || !backFile} className="flex-1 h-9 text-xs gradient-bg text-primary-foreground">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Analyze Condition</>}
-          </Button>
-          <Button onClick={handleRedesign} disabled={loading || !frontFile || !backFile} variant="outline" className="flex-1 h-9 text-xs">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Sparkles className="h-3 w-3 mr-1" /> Redesign</>}
-          </Button>
-        </div>
-      </div>
+        {/* Canvas preview */}
+        {previewImage && (
+          <div className="rounded-lg border border-border overflow-hidden">
+            <img
+              src={previewImage}
+              alt="Design preview"
+              className="w-full max-h-40 object-contain bg-muted/30"
+            />
+          </div>
+        )}
 
-      {/* Analysis result */}
-      {analysisResult && (
-        <div className="w-full max-w-sm rounded-lg border border-border bg-card p-3 space-y-2">
-          <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
-            <CheckCircle2 className="h-3 w-3 text-accent" /> Condition Analysis
-          </h4>
-          <div className="grid grid-cols-2 gap-1 text-[11px]">
-            {Object.entries(analysisResult.condition.cloth_details).map(([key, val]) => (
-              <div key={key} className="flex justify-between col-span-2 py-0.5 border-b border-border/50">
-                <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-                <span className="text-foreground font-medium">{String(val)}</span>
+        {/* Main tabs */}
+        <Tabs defaultValue="analyze" className="w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="analyze" className="flex-1 text-xs">
+              <Camera className="h-3 w-3 mr-1" />
+              Analyze
+            </TabsTrigger>
+            <TabsTrigger value="redesign" className="flex-1 text-xs">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Redesign
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex-1 text-xs">
+              <History className="h-3 w-3 mr-1" />
+              History
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Analyze tab */}
+          <TabsContent value="analyze" className="space-y-3 mt-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Front Image</Label>
+                {frontFile ? (
+                  <ImagePreview
+                    file={frontFile}
+                    label="Front"
+                    onClear={() => setFrontFile(null)}
+                  />
+                ) : (
+                  <>
+                    <input
+                      ref={frontRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setFrontFile(e.target.files?.[0] || null)}
+                    />
+                    <Button
+                      variant="outline"
+                      className="w-full h-24 flex-col gap-1"
+                      onClick={() => frontRef.current?.click()}
+                    >
+                      <FileImage className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground">Upload Front</span>
+                    </Button>
+                  </>
+                )}
               </div>
-            ))}
-          </div>
-          <p className="text-[10px] text-muted-foreground">File ID: {analysisResult.file_id}</p>
-        </div>
-      )}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Back Image</Label>
+                {backFile ? (
+                  <ImagePreview
+                    file={backFile}
+                    label="Back"
+                    onClear={() => setBackFile(null)}
+                  />
+                ) : (
+                  <>
+                    <input
+                      ref={backRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setBackFile(e.target.files?.[0] || null)}
+                    />
+                    <Button
+                      variant="outline"
+                      className="w-full h-24 flex-col gap-1"
+                      onClick={() => backRef.current?.click()}
+                    >
+                      <FileImage className="h-6 w-6 text-muted-foreground" />
+                      <span className="text-[10px] text-muted-foreground">Upload Back</span>
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
 
-      {/* Redesign result */}
-      {redesignResult && (
-        <div className="w-full max-w-sm rounded-lg border border-border bg-card p-3 space-y-2">
-          <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
-            <Sparkles className="h-3 w-3 text-primary" /> Redesign Suggestions
-          </h4>
-          {redesignResult.redesign_analysis?.cloth_details.redesign_suggestions.map((s, i) => (
-            <p key={i} className="text-[11px] text-foreground pl-2 border-l-2 border-primary/40">{s}</p>
-          ))}
-          <p className="text-[10px] text-muted-foreground">File: {redesignResult.file_id} → {redesignResult.after_file_id}</p>
-        </div>
-      )}
-    </div>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useLocal}
+                  onChange={(e) => setUseLocal(e.target.checked)}
+                  className="rounded"
+                />
+                <Zap className="h-3 w-3" />
+                Use local AI (faster)
+              </label>
+              {(frontFile || backFile) && (
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={clearAll}>
+                  Clear all
+                </Button>
+              )}
+            </div>
+
+            <Button
+              onClick={handleAnalyze}
+              disabled={loading || !frontFile || !backFile || apiStatus === 'offline'}
+              className="w-full gradient-bg text-primary-foreground"
+            >
+              {loadingAction === 'analyze' ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Camera className="h-4 w-4 mr-2" />
+              )}
+              Analyze Condition
+            </Button>
+
+            {/* Analysis result */}
+            {analysisResult && (
+              <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
+                    Analysis Result
+                  </h4>
+                  <Badge variant="outline" className="text-[9px] h-4 font-mono">
+                    {analysisResult.file_id.slice(0, 8)}
+                  </Badge>
+                </div>
+
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                    <div className="flex items-center gap-2">
+                      <Shirt className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-medium">
+                        {analysisResult.condition.cloth_details.cloth_type}
+                      </span>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {analysisResult.condition.cloth_details.cloth_fabric}
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysisResult.condition.cloth_details.suitable_for_redesign && (
+                      <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-0">
+                        <Paintbrush className="h-3 w-3 mr-1" />
+                        Redesign Ready
+                      </Badge>
+                    )}
+                    {analysisResult.condition.cloth_details.suitable_for_upcycling && (
+                      <Badge className="text-[10px] h-5 bg-accent/10 text-accent border-0">
+                        <Recycle className="h-3 w-3 mr-1" />
+                        Upcycle Ready
+                      </Badge>
+                    )}
+                    {analysisResult.condition.cloth_details.is_dirty_or_damaged ? (
+                      <Badge variant="destructive" className="text-[10px] h-5">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Needs Repair
+                      </Badge>
+                    ) : (
+                      <Badge className="text-[10px] h-5 bg-green-500/10 text-green-600 border-0">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Good Condition
+                      </Badge>
+                    )}
+                  </div>
+
+                  {analysisResult.condition.cloth_details.damage_description && (
+                    <p className="text-[11px] text-muted-foreground bg-destructive/5 p-2 rounded-md">
+                      {analysisResult.condition.cloth_details.damage_description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Redesign tab */}
+          <TabsContent value="redesign" className="space-y-3 mt-3">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Before (Original)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  {frontFile ? (
+                    <ImagePreview
+                      file={frontFile}
+                      label="Front"
+                      onClear={() => setFrontFile(null)}
+                    />
+                  ) : (
+                    <>
+                      <input
+                        ref={frontRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => setFrontFile(e.target.files?.[0] || null)}
+                      />
+                      <Button
+                        variant="outline"
+                        className="w-full h-20 flex-col gap-1"
+                        onClick={() => frontRef.current?.click()}
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span className="text-[9px]">Front</span>
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {backFile ? (
+                    <ImagePreview
+                      file={backFile}
+                      label="Back"
+                      onClear={() => setBackFile(null)}
+                    />
+                  ) : (
+                    <>
+                      <input
+                        ref={backRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => setBackFile(e.target.files?.[0] || null)}
+                      />
+                      <Button
+                        variant="outline"
+                        className="w-full h-20 flex-col gap-1"
+                        onClick={() => backRef.current?.click()}
+                      >
+                        <Upload className="h-4 w-4" />
+                        <span className="text-[9px]">Back</span>
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">After (Optional - Your Redesign)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  {afterFrontFile ? (
+                    <ImagePreview
+                      file={afterFrontFile}
+                      label="After Front"
+                      onClear={() => setAfterFrontFile(null)}
+                    />
+                  ) : (
+                    <>
+                      <input
+                        ref={afterFrontRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => setAfterFrontFile(e.target.files?.[0] || null)}
+                      />
+                      <Button
+                        variant="outline"
+                        className="w-full h-16 flex-col gap-1 border-dashed"
+                        onClick={() => afterFrontRef.current?.click()}
+                      >
+                        <ImageIcon className="h-3 w-3" />
+                        <span className="text-[9px]">After Front</span>
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  {afterBackFile ? (
+                    <ImagePreview
+                      file={afterBackFile}
+                      label="After Back"
+                      onClear={() => setAfterBackFile(null)}
+                    />
+                  ) : (
+                    <>
+                      <input
+                        ref={afterBackRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => setAfterBackFile(e.target.files?.[0] || null)}
+                      />
+                      <Button
+                        variant="outline"
+                        className="w-full h-16 flex-col gap-1 border-dashed"
+                        onClick={() => afterBackRef.current?.click()}
+                      >
+                        <ImageIcon className="h-3 w-3" />
+                        <span className="text-[9px]">After Back</span>
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useLocal}
+                  onChange={(e) => setUseLocal(e.target.checked)}
+                  className="rounded"
+                />
+                <Zap className="h-3 w-3" />
+                Use local AI
+              </label>
+            </div>
+
+            <Button
+              onClick={handleRedesign}
+              disabled={loading || !frontFile || !backFile || apiStatus === 'offline'}
+              className="w-full"
+              variant="default"
+            >
+              {loadingAction === 'redesign' ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Get Redesign Suggestions
+            </Button>
+
+            {/* Redesign result */}
+            {redesignResult && (
+              <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    Redesign Suggestions
+                  </h4>
+                  <div className="flex gap-1">
+                    <Badge variant="outline" className="text-[9px] h-4 font-mono">
+                      {redesignResult.file_id.slice(0, 6)}
+                    </Badge>
+                    <Badge variant="secondary" className="text-[9px] h-4 font-mono">
+                      {redesignResult.after_file_id.slice(0, 6)}
+                    </Badge>
+                  </div>
+                </div>
+
+                {redesignResult.redesign_analysis?.cloth_details.redesign_suggestions?.length ? (
+                  <div className="space-y-2">
+                    {redesignResult.redesign_analysis.cloth_details.redesign_suggestions.map((suggestion, i) => (
+                      <div
+                        key={i}
+                        className="flex gap-2 p-2 rounded-md bg-primary/5 border-l-2 border-primary"
+                      >
+                        <Paintbrush className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-foreground">{suggestion}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    No specific suggestions available
+                  </p>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* History tab */}
+          <TabsContent value="history" className="space-y-3 mt-3">
+            {analysisHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 gap-2">
+                <History className="h-8 w-8 text-muted-foreground/50" />
+                <p className="text-xs text-muted-foreground">No analysis history yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {analysisHistory.map((item, i) => (
+                  <div
+                    key={`${item.file_id}-${i}`}
+                    className="rounded-lg border border-border bg-card p-2.5 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Shirt className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-medium">
+                          {item.condition.cloth_details.cloth_type}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] h-4">
+                        {item.condition.cloth_details.cloth_fabric}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1">
+                      {item.condition.cloth_details.suitable_for_redesign && (
+                        <Badge variant="secondary" className="text-[9px] h-4">
+                          <Paintbrush className="h-2.5 w-2.5 mr-0.5" />
+                          Redesign
+                        </Badge>
+                      )}
+                      {item.condition.cloth_details.suitable_for_upcycling && (
+                        <Badge variant="secondary" className="text-[9px] h-4">
+                          <Recycle className="h-2.5 w-2.5 mr-0.5" />
+                          Upcycle
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-[9px] text-muted-foreground font-mono">
+                      ID: {item.file_id.slice(0, 12)}...
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </ScrollArea>
   );
 };
 
