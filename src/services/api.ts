@@ -152,7 +152,8 @@ export async function redesignCloth(
   userId: string,
   images: { before_front: File; before_back: File; after_front?: File; after_back?: File },
   token: string,
-  useLocal = false
+  useLocal = false,
+  fileId?: string
 ): Promise<RedesignResult> {
   const formData = new FormData();
   formData.append('before_cloth_front', images.before_front);
@@ -160,7 +161,9 @@ export async function redesignCloth(
   if (images.after_front) formData.append('after_cloth_front', images.after_front);
   if (images.after_back) formData.append('after_cloth_back', images.after_back);
   const prefix = useLocal ? '/localcloth' : '/cloth';
-  return request<RedesignResult>(`${prefix}/${userId}/redesign/`, {
+  // Local redesign requires file_id query parameter
+  const queryString = useLocal && fileId ? `?file_id=${encodeURIComponent(fileId)}` : '';
+  return request<RedesignResult>(`${prefix}/${userId}/redesign/${queryString}`, {
     method: 'PUT',
     body: formData,
   }, token);
@@ -305,7 +308,10 @@ export async function searchHealth(token: string): Promise<SearchHealthResponse>
 
 // ─── Health ──────────────────────────────────────────────────────────
 export async function healthCheck(): Promise<{ status: string }> {
-  return request<{ status: string }>('/health', {}).catch(() => ({ status: 'unreachable' }));
+  // Health endpoint is at root, not under /api/v1
+  const res = await fetch('https://ur.mztski-zhk.cc/health');
+  if (!res.ok) return { status: 'unreachable' };
+  return res.json();
 }
 
 export { ApiError };

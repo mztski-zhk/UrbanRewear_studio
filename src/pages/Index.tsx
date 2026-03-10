@@ -182,6 +182,15 @@ const AIPreview = () => {
       });
       return;
     }
+    // For local AI, we need a file_id from a previous analysis
+    if (useLocal && !analysisResult?.file_id) {
+      toast({
+        title: 'Analysis required',
+        description: 'Please analyze the cloth first when using local AI.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     setLoadingAction('redesign');
     setRedesignResult(null);
@@ -195,7 +204,8 @@ const AIPreview = () => {
           after_back: afterBackFile || undefined,
         },
         token,
-        useLocal
+        useLocal,
+        useLocal ? analysisResult?.file_id : undefined
       );
       setRedesignResult(result);
       toast({
@@ -213,7 +223,7 @@ const AIPreview = () => {
       setLoading(false);
       setLoadingAction(null);
     }
-  }, [token, user, frontFile, backFile, afterFrontFile, afterBackFile, useLocal]);
+  }, [token, user, frontFile, backFile, afterFrontFile, afterBackFile, useLocal, analysisResult]);
 
   const clearAll = () => {
     setFrontFile(null);
@@ -614,9 +624,16 @@ const AIPreview = () => {
               </label>
             </div>
 
+            {useLocal && !analysisResult?.file_id && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-1.5 rounded-md">
+                <AlertTriangle className="h-3 w-3 inline mr-1" />
+                Local AI requires analyzing the cloth first. Go to the Analyze tab first.
+              </p>
+            )}
+
             <Button
               onClick={handleRedesign}
-              disabled={loading || !frontFile || !backFile || apiStatus === 'offline'}
+              disabled={loading || !frontFile || !backFile || apiStatus === 'offline' || (useLocal && !analysisResult?.file_id)}
               className="w-full"
               variant="default"
             >
