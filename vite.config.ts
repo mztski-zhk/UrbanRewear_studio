@@ -4,7 +4,7 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-// force rebuild deps for react 19 + react-konva 19
+// force rebuild deps for react 19 + react-konva 19 + react-day-picker 9
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
