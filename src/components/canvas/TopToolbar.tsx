@@ -1,13 +1,16 @@
 import { useCanvas } from '@/contexts/CanvasContext';
 import { useConfig } from '@/contexts/ConfigContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Undo2, Redo2, Save, Download, Layers, History, Sun, Moon, Bug } from 'lucide-react';
+import { Undo2, Redo2, Save, Download, Layers, History, Sun, Moon, Bug, Package, Search } from 'lucide-react';
 import logo from '@/assets/logo.jpeg';
 import { useRef } from 'react';
 import AuthPanel from './AuthPanel';
+import ObjectsGallery from './ObjectsGallery';
+import SearchPanel from './SearchPanel';
 
 const TopToolbar = () => {
   const {
@@ -15,6 +18,7 @@ const TopToolbar = () => {
     setShowLayers, setShowVersions, mode, setMode,
   } = useCanvas();
   const { config, setTheme, toggleDebug } = useConfig();
+  const { isAuthenticated } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleImport = () => fileRef.current?.click();
@@ -93,6 +97,24 @@ const TopToolbar = () => {
         <Button variant="ghost" size="icon" onClick={() => setShowLayers(true)} className="h-8 w-8">
           <Layers className="h-4 w-4" />
         </Button>
+        {isAuthenticated && (
+          <>
+            <SearchPanel
+              trigger={
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Search className="h-4 w-4" />
+                </Button>
+              }
+            />
+            <ObjectsGallery
+              trigger={
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Package className="h-4 w-4" />
+                </Button>
+              }
+            />
+          </>
+        )}
         <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFile} />
         <AuthPanel />
       </div>

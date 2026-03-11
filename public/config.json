@@ -1,7 +1,7 @@
 {
   "theme": "light",
   "debugMode": false,
-  "allowClothUpload": false,
+  "allowClothUpload": true,
   "appName": "UrbanRewear",
   "version": "1.0.0"
 }
