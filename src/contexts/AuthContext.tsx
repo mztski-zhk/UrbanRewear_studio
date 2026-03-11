@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { login as apiLogin, signup as apiSignup, getProfile, type UserProfile, type SignupData, type TokenResponse, ApiError } from '@/services/api';
+import { login as apiLogin, signup as apiSignup, getProfile, type UserProfile, type SignupData, type TokenResponse, type SignupResponse, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -8,7 +8,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
-  signup: (data: SignupData) => Promise<void>;
+  signup: (data: SignupData) => Promise<SignupResponse>;
   logout: () => void;
   refreshProfile: () => Promise<void>;
 }
@@ -42,23 +42,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [token, logout]);
 
+  // On mount or when token/user changes, fetch the profile if we have a
+  // token but no user yet (e.g. page refresh with a stored token).
   useEffect(() => {
-    if (token) {
+    if (token && !user) {
       setIsLoading(true);
       refreshProfile().finally(() => setIsLoading(false));
     }
-  }, [token]);
+  }, [token, user, refreshProfile]);
 
   const login = async (username: string, password: string) => {
     const res: TokenResponse = await apiLogin(username, password);
+    // Fetch the profile atomically with the new token so that
+    // isAuthenticated becomes true immediately when login() resolves.
+    const profile = await getProfile(res.access_token);
     localStorage.setItem('ur_token', res.access_token);
     setToken(res.access_token);
-    toast({ title: 'Logged in', description: 'Welcome back!' });
+    setUser(profile);
+    toast({ title: 'Logged in', description: `Welcome back, ${profile.username}!` });
   };
 
-  const signup = async (data: SignupData) => {
-    await apiSignup(data);
-    toast({ title: 'Account created', description: 'You can now log in.' });
+  const signup = async (data: SignupData): Promise<SignupResponse> => {
+    return apiSignup(data);
   };
 
   return (
