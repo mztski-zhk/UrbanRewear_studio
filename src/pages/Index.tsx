@@ -111,7 +111,11 @@ const AIPreview = () => {
 
   useEffect(() => {
     if (stageRef.current) {
-      setPreviewImage(stageRef.current.toDataURL({ pixelRatio: 2 }));
+      try {
+        setPreviewImage(stageRef.current.toDataURL({ pixelRatio: 2 }));
+      } catch (error) {
+        console.error('Failed to create preview:', error);
+      }
     }
   }, [stageRef]);
 
@@ -148,17 +152,19 @@ const AIPreview = () => {
     try {
       const userId = guestId;
       const result = await analyzeCloth(userId, frontFile, backFile, null, useLocal);
+      console.log("[v0] Analysis complete:", result);
       setAnalysisResult(result);
       setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
       toast({
         title: 'Analysis complete',
-        description: `Type: ${result.condition.cloth_details.cloth_type}`,
+        description: `Type: ${result?.condition?.cloth_details?.cloth_type || 'Unknown'}`,
       });
     } catch (err) {
+      console.error("[v0] Analysis error:", err);
       const apiError = err instanceof ApiError ? err : null;
       toast({
         title: 'Analysis failed',
-        description: apiError?.message || 'An error occurred',
+        description: apiError?.message || (err instanceof Error ? err.message : 'An error occurred'),
         variant: 'destructive',
       });
     } finally {
@@ -202,16 +208,18 @@ const AIPreview = () => {
         useLocal,
         useLocal ? analysisResult?.file_id : undefined
       );
+      console.log("[v0] Redesign complete:", result);
       setRedesignResult(result);
       toast({
         title: 'Redesign complete',
         description: 'AI suggestions are ready!',
       });
     } catch (err) {
+      console.error("[v0] Redesign error:", err);
       const apiError = err instanceof ApiError ? err : null;
       toast({
         title: 'Redesign failed',
-        description: apiError?.message || 'An error occurred',
+        description: apiError?.message || (err instanceof Error ? err.message : 'An error occurred'),
         variant: 'destructive',
       });
     } finally {
@@ -227,6 +235,7 @@ const AIPreview = () => {
     setAfterBackFile(null);
     setAnalysisResult(null);
     setRedesignResult(null);
+    setAnalysisHistory([]);
   };
 
   return (
