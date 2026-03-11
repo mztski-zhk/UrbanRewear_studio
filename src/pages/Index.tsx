@@ -30,9 +30,53 @@ import {
   History,
   Zap,
 } from 'lucide-react';
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo, Component, ErrorInfo, ReactNode } from 'react';
 import { analyzeCloth, redesignCloth, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
+
+// Error Boundary to prevent blank page crashes
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[v0] Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-background p-4">
+          <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
+          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </p>
+          <Button onClick={() => this.setState({ hasError: false, error: null })}>
+            Try Again
+          </Button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 interface ImagePreviewProps {
   file: File | null;
@@ -117,7 +161,7 @@ const AIPreview = () => {
           setPreviewImage(dataUrl);
         }
       } catch (error) {
-        console.error("[v0] Failed to create preview:", error);
+        // Silently fail
         // Silently fail - don't crash the app
       }
     }
@@ -156,7 +200,7 @@ const AIPreview = () => {
     try {
       const userId = guestId;
       const result = await analyzeCloth(userId, frontFile, backFile, null, useLocal);
-      console.log("[v0] Analysis complete:", result);
+
       setAnalysisResult(result);
       setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
       toast({
@@ -164,7 +208,7 @@ const AIPreview = () => {
         description: `Type: ${result?.condition?.cloth_details?.cloth_type || 'Unknown'}`,
       });
     } catch (err) {
-      console.error("[v0] Analysis error:", err);
+
       const apiError = err instanceof ApiError ? err : null;
       toast({
         title: 'Analysis failed',
@@ -212,14 +256,14 @@ const AIPreview = () => {
         useLocal,
         useLocal ? analysisResult?.file_id : undefined
       );
-      console.log("[v0] Redesign complete:", result);
+
       setRedesignResult(result);
       toast({
         title: 'Redesign complete',
         description: 'AI suggestions are ready!',
       });
     } catch (err) {
-      console.error("[v0] Redesign error:", err);
+
       const apiError = err instanceof ApiError ? err : null;
       toast({
         title: 'Redesign failed',
@@ -701,9 +745,11 @@ const AIPreview = () => {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-[9px] text-muted-foreground font-mono">
-                      ID: {item.file_id.slice(0, 12)}...
-                    </p>
+                    {item?.file_id && (
+                      <p className="text-[9px] text-muted-foreground font-mono">
+                        ID: {item.file_id.slice(0, 12)}...
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -732,9 +778,11 @@ const CanvasApp = () => {
 };
 
 const Index = () => (
-  <CanvasProvider>
-    <CanvasApp />
-  </CanvasProvider>
+  <ErrorBoundary>
+    <CanvasProvider>
+      <CanvasApp />
+    </CanvasProvider>
+  </ErrorBoundary>
 );
 
 export default Index;
