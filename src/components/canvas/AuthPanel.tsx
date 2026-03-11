@@ -81,6 +81,7 @@ const AuthForms = ({ onSuccess }: { onSuccess: () => void }) => {
       const msg = err instanceof ApiError ? err.message : 'Login failed';
       toast({ title: 'Error', description: msg, variant: 'destructive' });
     } finally {
+      setLoginPw('');
       setLoading(false);
     }
   };
@@ -90,13 +91,26 @@ const AuthForms = ({ onSuccess }: { onSuccess: () => void }) => {
     setLoading(true);
     try {
       await signup({ username: signupUser, email: signupEmail, password: signupPw });
-      // Auto-login after signup
-      await login(signupEmail, signupPw);
-      onSuccess();
+      toast({ title: 'Account created', description: 'Signing you in…' });
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Signup failed';
-      toast({ title: 'Error', description: msg, variant: 'destructive' });
+      toast({ title: 'Signup error', description: msg, variant: 'destructive' });
+      setLoading(false);
+      return;
+    }
+    // Auto-login using the registered username after successful signup
+    try {
+      await login(signupUser, signupPw);
+      onSuccess();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : 'Login failed';
+      toast({
+        title: 'Account created – please log in',
+        description: msg,
+        variant: 'destructive',
+      });
     } finally {
+      setSignupPw('');
       setLoading(false);
     }
   };

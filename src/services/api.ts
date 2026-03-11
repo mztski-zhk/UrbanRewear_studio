@@ -68,20 +68,35 @@ export interface SignupData {
   homeaddress?: Record<string, string>;
 }
 
-export async function signup(data: SignupData) {
-  return request('/users/signup', {
+export interface SignupResponse {
+  message: string;
+  id: string;
+}
+
+export async function signup(data: SignupData): Promise<SignupResponse> {
+  return request<SignupResponse>('/users/signup', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 // ─── User Profile ────────────────────────────────────────────────────
+export interface HomeAddress {
+  address?: string;
+  street?: string;
+  city?: string;
+  country_or_region?: string;
+  state?: string;
+  zip_code?: string;
+  address2?: string | null;
+}
+
 export interface UserProfile {
   uid: string;
   username: string;
   email: string;
   phone_num?: string;
-  homeaddress?: Record<string, any>;
+  homeaddress?: HomeAddress;
   disabled: boolean;
 }
 
