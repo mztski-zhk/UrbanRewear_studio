@@ -31,7 +31,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { analyzeCloth, redesignCloth, healthCheck, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
+import { analyzeCloth, redesignCloth, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
 interface ImagePreviewProps {
@@ -108,20 +108,6 @@ const AIPreview = () => {
   const [afterFrontFile, setAfterFrontFile] = useState<File | null>(null);
   const [afterBackFile, setAfterBackFile] = useState<File | null>(null);
   const [useLocal, setUseLocal] = useState(false);
-  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-
-  // Check API health on mount
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const result = await healthCheck();
-        setApiStatus(result.status === 'ok' ? 'online' : 'offline');
-      } catch {
-        setApiStatus('offline');
-      }
-    };
-    checkHealth();
-  }, []);
 
   useEffect(() => {
     if (stageRef.current) {
@@ -249,17 +235,6 @@ const AIPreview = () => {
         {/* Status bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Badge
-              variant={apiStatus === 'online' ? 'default' : apiStatus === 'offline' ? 'destructive' : 'secondary'}
-              className="text-[10px] h-5"
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full mr-1 ${
-                  apiStatus === 'online' ? 'bg-green-400' : apiStatus === 'offline' ? 'bg-red-400' : 'bg-yellow-400 animate-pulse'
-                }`}
-              />
-              {apiStatus === 'online' ? 'API Online' : apiStatus === 'offline' ? 'API Offline' : 'Checking...'}
-            </Badge>
             {useLocal && (
               <Badge variant="outline" className="text-[10px] h-5">
                 <Zap className="h-3 w-3 mr-1" />
@@ -404,7 +379,7 @@ const AIPreview = () => {
 
             <Button
               onClick={handleAnalyze}
-              disabled={loading || !frontFile || !backFile || apiStatus === 'offline'}
+              disabled={loading || !frontFile || !backFile}
               className="w-full gradient-bg text-primary-foreground"
             >
               {loadingAction === 'analyze' ? (
