@@ -33,7 +33,7 @@ async function request<T>(
   }
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-  
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new ApiError(res.status, body);
@@ -324,7 +324,7 @@ export async function searchHealth(token: string): Promise<SearchHealthResponse>
 // ─── Health ──────────────────────────────────────────────────────────
 export async function healthCheck(): Promise<{ status: string }> {
   // Health endpoint is at root, not under /api/v1
-  const res = await fetch('https://ur.mztski-zhk.cc/health');
+  const res = await fetch('https://ur.mztski-zhk.cc/api/v1/health');
   if (!res.ok) return { status: 'unreachable' };
   return res.json();
 }
