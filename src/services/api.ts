@@ -139,7 +139,7 @@ export async function analyzeCloth(
   userId: string,
   frontImage: File,
   backImage: File,
-  token: string,
+  token?: string | null,
   useLocal = false
 ): Promise<ClothCondition> {
   const formData = new FormData();
@@ -166,7 +166,7 @@ export interface RedesignResult {
 export async function redesignCloth(
   userId: string,
   images: { before_front: File; before_back: File; after_front?: File; after_back?: File },
-  token: string,
+  token?: string | null,
   useLocal = false,
   fileId?: string
 ): Promise<RedesignResult> {
