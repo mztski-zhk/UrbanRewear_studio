@@ -214,8 +214,6 @@ export interface SearchResult {
   id: string;
   user_id: string;
   file_available: string[];
-￼
-￼￼￼
   cloth_status: {
     type?: string;
     cloth_type?: string;
