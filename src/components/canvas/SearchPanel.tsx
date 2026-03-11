@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   searchSimple,
   searchAdvanced,
@@ -53,7 +52,15 @@ const CLOTH_TYPES = ['shirt', 't-shirt', 'pants', 'dress', 'jacket', 'sweater'];
 const COLOR_OPTIONS = ['red', 'blue', 'green', 'black', 'white', 'yellow', 'orange', 'purple'];
 
 const SearchPanel = ({ trigger }: SearchPanelProps) => {
-  const { token, isAuthenticated } = useAuth();
+  const guestToken = useMemo(() => {
+    const key = 'ur_guest_token';
+    let token = sessionStorage.getItem(key);
+    if (!token) {
+      token = `guest_${crypto.randomUUID()}`;
+      sessionStorage.setItem(key, token);
+    }
+    return token;
+  }, []);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -84,7 +91,7 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
 
   // Autocomplete
   useEffect(() => {
-    if (!token || query.length < 2) {
+    if (query.length < 2) {
       setSuggestions([]);
       return;
     }
@@ -92,7 +99,7 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const response = await searchAutocomplete(query, token, 5);
+        const response = await searchAutocomplete(query, guestToken, 5);
         setSuggestions(response.suggestions || []);
       } catch {
         setSuggestions([]);
@@ -102,11 +109,11 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, token]);
+  }, [query, guestToken]);
 
   const handleSearch = useCallback(async (searchQuery?: string, newOffset = 0) => {
     const q = searchQuery ?? query;
-    if (!token || !q.trim()) return;
+    if (!q.trim()) return;
 
     setLoading(true);
     setShowSuggestions(false);
@@ -120,9 +127,9 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
           limit: 20,
           offset: newOffset,
           ...filters,
-        }, token);
+        }, guestToken);
       } else {
-        response = await searchSimple(q, token, 20, newOffset);
+        response = await searchSimple(q, guestToken, 20, newOffset);
       }
 
       if (newOffset === 0) {
@@ -139,16 +146,16 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
     } finally {
       setLoading(false);
     }
-  }, [query, token, filters, hasActiveFilters]);
+  }, [query, guestToken, filters, hasActiveFilters]);
 
   const handleFuzzySearch = useCallback(async () => {
-    if (!token || !query.trim()) return;
+    if (!query.trim()) return;
 
     setLoading(true);
     setShowSuggestions(false);
 
     try {
-      const response = await searchFuzzy(query, token, 20);
+      const response = await searchFuzzy(query, guestToken, 20);
       setResults(response.results);
       setHasMore(response.has_more);
       setTotalReturned(response.total_returned);
@@ -159,7 +166,7 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
     } finally {
       setLoading(false);
     }
-  }, [query, token]);
+  }, [query, guestToken]);
 
   const handleSuggestionClick = (suggestion: string) => {
     setQuery(suggestion);
@@ -189,10 +196,6 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
       colors: [],
     });
   };
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
