@@ -52,17 +52,19 @@ const AIPreview = () => {
   };
 
   const handleRedesign = async () => {
-    if (!token || !user || !frontFile || !backFile) {
+    if (!frontFile || !backFile) {
       toast({ title: 'Missing data', description: 'Please upload images first.', variant: 'destructive' });
       return;
     }
     setLoading(true);
     setRedesignResult(null);
     try {
+      // Use authenticated user id if available, otherwise use 'guest' for anonymous redesign
+      const userId = user?.uid ?? 'guest';
       const result = await redesignCloth(
-        user.uid,
+        userId,
         { before_front: frontFile, before_back: backFile },
-        token,
+        token ?? undefined,
         useLocal
       );
       setRedesignResult(result);
@@ -75,14 +77,8 @@ const AIPreview = () => {
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
-        <AlertTriangle className="h-10 w-10 text-muted-foreground" />
-        <p className="text-muted-foreground text-sm text-center">Log in to use AI cloth analysis & redesign.</p>
-      </div>
-    );
-  }
+  // Analysis still requires auth, but redesign is now available to guests
+  const analysisRequiresAuth = !isAuthenticated;
 
   return (
     <div className="flex-1 flex flex-col items-center gap-4 p-4 overflow-auto">
@@ -122,7 +118,12 @@ const AIPreview = () => {
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={handleAnalyze} disabled={loading || !frontFile || !backFile} className="flex-1 h-9 text-xs gradient-bg text-primary-foreground">
+          <Button 
+            onClick={handleAnalyze} 
+            disabled={loading || !frontFile || !backFile || analysisRequiresAuth} 
+            className="flex-1 h-9 text-xs gradient-bg text-primary-foreground"
+            title={analysisRequiresAuth ? 'Login required for analysis' : undefined}
+          >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Analyze Condition</>}
           </Button>
           <Button onClick={handleRedesign} disabled={loading || !frontFile || !backFile} variant="outline" className="flex-1 h-9 text-xs">
