@@ -31,7 +31,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { analyzeCloth, redesignCloth, healthCheck, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
@@ -84,7 +83,6 @@ const ImagePreview = ({ file, label, onClear }: ImagePreviewProps) => {
 
 const AIPreview = () => {
   const { stageRef } = useCanvas();
-  const { token, user } = useAuth();
   const guestId = useMemo(() => {
     const key = 'ur_guest_id';
     let id = sessionStorage.getItem(key);
@@ -162,8 +160,8 @@ const AIPreview = () => {
     setLoadingAction('analyze');
     setAnalysisResult(null);
     try {
-      const userId = user?.uid ?? guestId;
-      const result = await analyzeCloth(userId, frontFile, backFile, token, useLocal);
+      const userId = guestId;
+      const result = await analyzeCloth(userId, frontFile, backFile, null, useLocal);
       setAnalysisResult(result);
       setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
       toast({
@@ -181,7 +179,7 @@ const AIPreview = () => {
       setLoading(false);
       setLoadingAction(null);
     }
-  }, [token, user, frontFile, backFile, useLocal]);
+  }, [frontFile, backFile, useLocal, guestId]);
 
   const handleRedesign = useCallback(async () => {
     if (!frontFile || !backFile) {
@@ -205,7 +203,7 @@ const AIPreview = () => {
     setLoadingAction('redesign');
     setRedesignResult(null);
     try {
-      const userId = user?.uid ?? guestId;
+      const userId = guestId;
       const result = await redesignCloth(
         userId,
         {
@@ -214,7 +212,7 @@ const AIPreview = () => {
           after_front: afterFrontFile || undefined,
           after_back: afterBackFile || undefined,
         },
-        token,
+        null,
         useLocal,
         useLocal ? analysisResult?.file_id : undefined
       );
@@ -234,7 +232,7 @@ const AIPreview = () => {
       setLoading(false);
       setLoadingAction(null);
     }
-  }, [token, user, frontFile, backFile, afterFrontFile, afterBackFile, useLocal, analysisResult]);
+  }, [frontFile, backFile, afterFrontFile, afterBackFile, useLocal, analysisResult, guestId]);
 
   const clearAll = () => {
     setFrontFile(null);
