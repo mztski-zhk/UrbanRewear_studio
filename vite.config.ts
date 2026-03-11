@@ -12,17 +12,8 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: [
-      "react",
-      "react-dom",
-      "react-router-dom",
-      "@tanstack/react-query",
-      "konva",
-      "react-konva",
-      "react-day-picker",
-      "sonner",
-      "lucide-react",
-    ],
+    noDiscovery: true,
+    include: [],
   },
   plugins: [react()],
   resolve: {
