@@ -1,3 +1,4 @@
+// API Service
 const BASE_URL = 'https://ur.mztski-zhk.cc/api/v1';
 
 class ApiError extends Error {
