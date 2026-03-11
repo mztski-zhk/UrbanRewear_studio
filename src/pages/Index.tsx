@@ -30,7 +30,7 @@ import {
   History,
   Zap,
 } from 'lucide-react';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { analyzeCloth, redesignCloth, healthCheck, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
@@ -84,7 +84,16 @@ const ImagePreview = ({ file, label, onClear }: ImagePreviewProps) => {
 
 const AIPreview = () => {
   const { stageRef } = useCanvas();
-  const { token, user, isAuthenticated } = useAuth();
+  const { token, user } = useAuth();
+  const guestId = useMemo(() => {
+    const key = 'ur_guest_id';
+    let id = sessionStorage.getItem(key);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(key, id);
+    }
+    return id;
+  }, []);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingAction, setLoadingAction] = useState<'analyze' | 'redesign' | null>(null);
@@ -141,10 +150,10 @@ const AIPreview = () => {
   }, [loading]);
 
   const handleAnalyze = useCallback(async () => {
-    if (!token || !user || !frontFile || !backFile) {
+    if (!frontFile || !backFile) {
       toast({
         title: 'Missing data',
-        description: 'Please upload front and back images and log in.',
+        description: 'Please upload front and back images.',
         variant: 'destructive',
       });
       return;
@@ -153,7 +162,8 @@ const AIPreview = () => {
     setLoadingAction('analyze');
     setAnalysisResult(null);
     try {
-      const result = await analyzeCloth(user.uid, frontFile, backFile, token, useLocal);
+      const userId = user?.uid ?? guestId;
+      const result = await analyzeCloth(userId, frontFile, backFile, token, useLocal);
       setAnalysisResult(result);
       setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
       toast({
@@ -174,7 +184,7 @@ const AIPreview = () => {
   }, [token, user, frontFile, backFile, useLocal]);
 
   const handleRedesign = useCallback(async () => {
-    if (!token || !user || !frontFile || !backFile) {
+    if (!frontFile || !backFile) {
       toast({
         title: 'Missing data',
         description: 'Please upload before images first.',
@@ -195,8 +205,9 @@ const AIPreview = () => {
     setLoadingAction('redesign');
     setRedesignResult(null);
     try {
+      const userId = user?.uid ?? guestId;
       const result = await redesignCloth(
-        user.uid,
+        userId,
         {
           before_front: frontFile,
           before_back: backFile,
@@ -233,27 +244,6 @@ const AIPreview = () => {
     setAnalysisResult(null);
     setRedesignResult(null);
   };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
-        <div className="relative">
-          <Shirt className="h-16 w-16 text-muted-foreground/30" />
-          <Sparkles className="h-6 w-6 text-primary absolute -top-1 -right-1" />
-        </div>
-        <div className="text-center space-y-2">
-          <h3 className="font-semibold text-foreground">AI Cloth Analysis</h3>
-          <p className="text-muted-foreground text-sm max-w-xs">
-            Log in to analyze your clothes with AI and get redesign suggestions
-          </p>
-        </div>
-        <Badge variant="outline" className="text-xs">
-          <AlertTriangle className="h-3 w-3 mr-1" />
-          Authentication required
-        </Badge>
-      </div>
-    );
-  }
 
   return (
     <ScrollArea className="flex-1">
