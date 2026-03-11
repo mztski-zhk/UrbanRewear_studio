@@ -27,7 +27,6 @@ async function request<T>(
     ...(options.headers as Record<string, string> || {}),
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  // Don't set Content-Type for FormData
   if (!(options.body instanceof FormData) && !headers['Content-Type']) {
     headers['Content-Type'] = 'application/json';
   }
@@ -42,7 +41,7 @@ async function request<T>(
   return res.json();
 }
 
-// ─── Auth ────────────────────────────────────────────────────────────
+// Auth
 export interface TokenResponse {
   access_token: string;
   token_type: string;
@@ -80,7 +79,7 @@ export async function signup(data: SignupData): Promise<SignupResponse> {
   });
 }
 
-// ─── User Profile ────────────────────────────────────────────────────
+// User Profile
 export interface HomeAddress {
   address?: string;
   street?: string;
@@ -119,7 +118,7 @@ export async function deleteAccount(uid: string, token: string) {
   return request(`/users/${uid}`, { method: 'DELETE' }, token);
 }
 
-// ─── Cloth Analysis ──────────────────────────────────────────────────
+// Cloth Analysis
 export interface ClothCondition {
   file_id: string;
   condition: {
@@ -176,7 +175,6 @@ export async function redesignCloth(
   if (images.after_front) formData.append('after_cloth_front', images.after_front);
   if (images.after_back) formData.append('after_cloth_back', images.after_back);
   const prefix = useLocal ? '/localcloth' : '/cloth';
-  // Local redesign requires file_id query parameter
   const queryString = useLocal && fileId ? `?file_id=${encodeURIComponent(fileId)}` : '';
   return request<RedesignResult>(`${prefix}/${userId}/redesign/${queryString}`, {
     method: 'PUT',
@@ -184,7 +182,7 @@ export async function redesignCloth(
   }, token);
 }
 
-// ─── Objects ─────────────────────────────────────────────────────────
+// Objects
 export interface ClothObject {
   id: string;
   user_id: string;
@@ -209,7 +207,7 @@ export async function getUserObjects(userId: string, token: string): Promise<Use
   return request<UserObjectsResponse>(`/obj/${userId}`, {}, token);
 }
 
-// ─── Search ──────────────────────────────────────────────────────────
+// Search
 export interface SearchResult {
   id: string;
   user_id: string;
@@ -321,9 +319,8 @@ export async function searchHealth(token: string): Promise<SearchHealthResponse>
   return request<SearchHealthResponse>('/search/health', {}, token);
 }
 
-// ─── Health ──────────────────────────────────────────────────────────
+// Health
 export async function healthCheck(): Promise<{ status: string }> {
-  // Health endpoint is at root, not under /api/v1
   const res = await fetch('https://ur.mztski-zhk.cc/api/v1/health');
   if (!res.ok) return { status: 'unreachable' };
   return res.json();
