@@ -1,3 +1,4 @@
+// UrbanRewear Studio - Main Page
 import { CanvasProvider, useCanvas } from '@/contexts/CanvasContext';
 import TopToolbar from '@/components/canvas/TopToolbar';
 import CanvasStage from '@/components/canvas/CanvasStage';
