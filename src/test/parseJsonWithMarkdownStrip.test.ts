@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { parseJsonWithMarkdownStrip } from "@/services/api";
+import { parseJsonWithMarkdownStrip, getClothDetails, type ClothCondition } from "@/services/api";
 
 describe("parseJsonWithMarkdownStrip()", () => {
   afterEach(() => {
@@ -67,5 +67,44 @@ describe("parseJsonWithMarkdownStrip()", () => {
     };
     const wrapped = "```json\n" + JSON.stringify(clothCondition) + "\n```";
     expect(parseJsonWithMarkdownStrip(wrapped)).toEqual(clothCondition);
+  });
+});
+
+describe("getClothDetails()", () => {
+  it("returns null for null input", () => {
+    expect(getClothDetails(null)).toBeNull();
+  });
+
+  it("returns cloth_details when condition is an object", () => {
+    const result: ClothCondition = {
+      file_id: "file-001",
+      condition: {
+        cloth_details: {
+          cloth_type: "T-shirt",
+          cloth_fabric: "Cotton",
+          is_dirty_or_damaged: false,
+          suitable_for_redesign: true,
+          suitable_for_upcycling: false,
+        },
+      },
+    };
+    expect(getClothDetails(result)).toEqual(result.condition.cloth_details);
+  });
+
+  it("returns null when condition is a raw string", () => {
+    const result: ClothCondition = {
+      file_id: "file-002",
+      condition: "This cloth appears to be a cotton T-shirt in good condition.",
+    };
+    expect(getClothDetails(result)).toBeNull();
+  });
+
+  it("raw string condition is accessible directly on the result", () => {
+    const rawCondition = "Worn denim jacket with minor fraying on the cuffs.";
+    const result: ClothCondition = {
+      condition: rawCondition,
+    };
+    expect(typeof result.condition).toBe("string");
+    expect(result.condition).toBe(rawCondition);
   });
 });
