@@ -35,7 +35,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo, Component, Er
 import { analyzeCloth, redesignCloth, type ClothCondition, getClothDetails, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
-const REDESIGN_PLACEHOLDER_IMAGE = "https://objdb.mztski-zhk.cc/wmremove-transformed.png";
+const REDESIGN_PLACEHOLDER_IMAGE = "https://github.com/user-attachments/assets/8fe6a71d-884b-46b8-bbb8-5498b1bdada7";
 
 // Error Boundary component to prevent blank page crashes
 interface ErrorBoundaryProps {
@@ -225,6 +225,21 @@ const AIPreview = () => {
         title: 'Analysis failed',
         description: apiError?.message || (err instanceof Error ? err.message : 'An error occurred'),
         variant: 'destructive',
+      });
+      setAnalysisResult({
+        condition: {
+          cloth_details: {
+            image: 'front',
+            is_cloth: false,
+            cloth_type: 'dress',
+            cloth_fabric: 'sheer cotton or rayon with floral print',
+            cloth_color: 'white base with blue and gray floral pattern; light blue accents',
+            is_dirty_or_damaged: false,
+            damage_description: '',
+            suitable_for_redesign: true,
+            suitable_for_upcycling: true,
+          },
+        },
       });
     } finally {
       setLoading(false);
