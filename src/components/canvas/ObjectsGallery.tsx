@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect, useMemo } from 'react';
 import { getUserObjects, type ClothObject, ApiError } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,18 +30,34 @@ interface ObjectsGalleryProps {
 }
 
 const ObjectsGallery = ({ trigger }: ObjectsGalleryProps) => {
-  const { token, user, isAuthenticated } = useAuth();
+  const guestId = useMemo(() => {
+    const key = 'ur_guest_id';
+    let id = sessionStorage.getItem(key);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(key, id);
+    }
+    return id;
+  }, []);
+  const guestToken = useMemo(() => {
+    const key = 'ur_guest_token';
+    let token = sessionStorage.getItem(key);
+    if (!token) {
+      token = `guest_${crypto.randomUUID()}`;
+      sessionStorage.setItem(key, token);
+    }
+    return token;
+  }, []);
   const [open, setOpen] = useState(false);
   const [objects, setObjects] = useState<ClothObject[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchObjects = async () => {
-    if (!token || !user) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await getUserObjects(user.uid, token);
+      const response = await getUserObjects(guestId, guestToken);
       setObjects(response.objects || []);
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Failed to load objects';
@@ -54,14 +69,10 @@ const ObjectsGallery = ({ trigger }: ObjectsGalleryProps) => {
   };
 
   useEffect(() => {
-    if (open && isAuthenticated) {
+    if (open) {
       fetchObjects();
     }
-  }, [open, isAuthenticated]);
-
-  if (!isAuthenticated) {
-    return null;
-  }
+  }, [open]);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

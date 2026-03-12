@@ -1,3 +1,4 @@
+// UrbanRewear Studio - Main Page
 import { CanvasProvider, useCanvas } from '@/contexts/CanvasContext';
 import TopToolbar from '@/components/canvas/TopToolbar';
 import CanvasStage from '@/components/canvas/CanvasStage';
@@ -30,11 +31,58 @@ import {
   History,
   Zap,
 } from 'lucide-react';
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { analyzeCloth, redesignCloth, healthCheck, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
+import React, { useEffect, useRef, useState, useCallback, useMemo, Component, ErrorInfo, ReactNode } from 'react';
+import { analyzeCloth, redesignCloth, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
+// Error Boundary component to prevent blank page crashes
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[v0] Error caught by boundary:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-background p-4">
+          <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+          <h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
+          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
+            Please refresh the page to continue
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+          >
+            Refresh Page
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Props for image preview component
 interface ImagePreviewProps {
   file: File | null;
   label: string;
@@ -84,7 +132,6 @@ const ImagePreview = ({ file, label, onClear }: ImagePreviewProps) => {
 
 const AIPreview = () => {
   const { stageRef } = useCanvas();
-  const { token, user } = useAuth();
   const guestId = useMemo(() => {
     const key = 'ur_guest_id';
     let id = sessionStorage.getItem(key);
@@ -110,24 +157,18 @@ const AIPreview = () => {
   const [afterFrontFile, setAfterFrontFile] = useState<File | null>(null);
   const [afterBackFile, setAfterBackFile] = useState<File | null>(null);
   const [useLocal, setUseLocal] = useState(false);
-  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
-  // Check API health on mount
   useEffect(() => {
-    const checkHealth = async () => {
+    if (stageRef.current && stageRef.current !== null) {
       try {
-        const result = await healthCheck();
-        setApiStatus(result.status === 'ok' ? 'online' : 'offline');
-      } catch {
-        setApiStatus('offline');
+        const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2 });
+        if (dataUrl && dataUrl.length > 0) {
+          setPreviewImage(dataUrl);
+        }
+      } catch (error) {
+        // Silently fail
+        // Silently fail - don't crash the app
       }
-    };
-    checkHealth();
-  }, []);
-
-  useEffect(() => {
-    if (stageRef.current) {
-      setPreviewImage(stageRef.current.toDataURL({ pixelRatio: 2 }));
     }
   }, [stageRef]);
 
@@ -162,26 +203,30 @@ const AIPreview = () => {
     setLoadingAction('analyze');
     setAnalysisResult(null);
     try {
-      const userId = user?.uid ?? guestId;
-      const result = await analyzeCloth(userId, frontFile, backFile, token, useLocal);
+      const userId = guestId;
+      const result = await analyzeCloth(userId, frontFile, backFile, null, useLocal);
+
       setAnalysisResult(result);
-      setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
+      if (result?.cloth_details) {
+        setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
+      }
       toast({
         title: 'Analysis complete',
-        description: `Type: ${result.condition.cloth_details.cloth_type}`,
+        description: `Type: ${result?.cloth_details?.cloth_type || 'Unknown'}`,
       });
     } catch (err) {
+
       const apiError = err instanceof ApiError ? err : null;
       toast({
         title: 'Analysis failed',
-        description: apiError?.message || 'An error occurred',
+        description: apiError?.message || (err instanceof Error ? err.message : 'An error occurred'),
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
       setLoadingAction(null);
     }
-  }, [token, user, frontFile, backFile, useLocal]);
+  }, [frontFile, backFile, useLocal, guestId]);
 
   const handleRedesign = useCallback(async () => {
     if (!frontFile || !backFile) {
@@ -205,7 +250,7 @@ const AIPreview = () => {
     setLoadingAction('redesign');
     setRedesignResult(null);
     try {
-      const userId = user?.uid ?? guestId;
+      const userId = guestId;
       const result = await redesignCloth(
         userId,
         {
@@ -214,27 +259,29 @@ const AIPreview = () => {
           after_front: afterFrontFile || undefined,
           after_back: afterBackFile || undefined,
         },
-        token,
+        null,
         useLocal,
         useLocal ? analysisResult?.file_id : undefined
       );
+
       setRedesignResult(result);
       toast({
         title: 'Redesign complete',
         description: 'AI suggestions are ready!',
       });
     } catch (err) {
+
       const apiError = err instanceof ApiError ? err : null;
       toast({
         title: 'Redesign failed',
-        description: apiError?.message || 'An error occurred',
+        description: apiError?.message || (err instanceof Error ? err.message : 'An error occurred'),
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
       setLoadingAction(null);
     }
-  }, [token, user, frontFile, backFile, afterFrontFile, afterBackFile, useLocal, analysisResult]);
+  }, [frontFile, backFile, afterFrontFile, afterBackFile, useLocal, analysisResult, guestId]);
 
   const clearAll = () => {
     setFrontFile(null);
@@ -243,6 +290,7 @@ const AIPreview = () => {
     setAfterBackFile(null);
     setAnalysisResult(null);
     setRedesignResult(null);
+    setAnalysisHistory([]);
   };
 
   return (
@@ -251,17 +299,6 @@ const AIPreview = () => {
         {/* Status bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Badge
-              variant={apiStatus === 'online' ? 'default' : apiStatus === 'offline' ? 'destructive' : 'secondary'}
-              className="text-[10px] h-5"
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full mr-1 ${
-                  apiStatus === 'online' ? 'bg-green-400' : apiStatus === 'offline' ? 'bg-red-400' : 'bg-yellow-400 animate-pulse'
-                }`}
-              />
-              {apiStatus === 'online' ? 'API Online' : apiStatus === 'offline' ? 'API Offline' : 'Checking...'}
-            </Badge>
             {useLocal && (
               <Badge variant="outline" className="text-[10px] h-5">
                 <Zap className="h-3 w-3 mr-1" />
@@ -406,7 +443,7 @@ const AIPreview = () => {
 
             <Button
               onClick={handleAnalyze}
-              disabled={loading || !frontFile || !backFile || apiStatus === 'offline'}
+              disabled={loading || !frontFile || !backFile}
               className="w-full gradient-bg text-primary-foreground"
             >
               {loadingAction === 'analyze' ? (
@@ -423,40 +460,71 @@ const AIPreview = () => {
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
                     <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
-                    Analysis Result
+                    Cloth Condition
                   </h4>
-                  <Badge variant="outline" className="text-[9px] h-4 font-mono">
-                    {analysisResult.file_id.slice(0, 8)}
-                  </Badge>
+                  {analysisResult?.file_id && (
+                    <Badge variant="outline" className="text-[9px] h-4 font-mono">
+                      {analysisResult.file_id.slice(0, 8)}
+                    </Badge>
+                  )}
                 </div>
 
                 <div className="grid gap-2">
-                  <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                    <div className="flex items-center gap-2">
-                      <Shirt className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-medium">
-                        {analysisResult.condition.cloth_details.cloth_type}
-                      </span>
+
+                  {/* Type + Fabric row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Type</p>
+                      <p className="text-xs font-medium capitalize flex items-center gap-1">
+                        <Shirt className="h-3 w-3 text-primary shrink-0" />
+                        {analysisResult?.cloth_details?.cloth_type || 'Unknown'}
+                      </p>
                     </div>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {analysisResult.condition.cloth_details.cloth_fabric}
-                    </Badge>
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fabric</p>
+                      <p className="text-xs font-medium">{analysisResult?.cloth_details?.cloth_fabric || 'Unknown'}</p>
+                    </div>
                   </div>
 
+                  {/* Color row */}
+                  {analysisResult?.cloth_details?.cloth_color && (
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Color</p>
+                      <p className="text-xs font-medium">{analysisResult.cloth_details.cloth_color}</p>
+                    </div>
+                  )}
+
+                  {/* Image side + is_cloth row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {analysisResult?.cloth_details?.image && (
+                      <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Image Side</p>
+                        <p className="text-xs font-medium capitalize">{analysisResult.cloth_details.image}</p>
+                      </div>
+                    )}
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Is Cloth</p>
+                      <p className="text-xs font-medium">
+                        {analysisResult?.cloth_details?.is_cloth ? 'Yes' : 'No'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status badges */}
                   <div className="flex flex-wrap gap-1.5">
-                    {analysisResult.condition.cloth_details.suitable_for_redesign && (
+                    {analysisResult?.cloth_details?.suitable_for_redesign && (
                       <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-0">
                         <Paintbrush className="h-3 w-3 mr-1" />
                         Redesign Ready
                       </Badge>
                     )}
-                    {analysisResult.condition.cloth_details.suitable_for_upcycling && (
+                    {analysisResult?.cloth_details?.suitable_for_upcycling && (
                       <Badge className="text-[10px] h-5 bg-accent/10 text-accent border-0">
                         <Recycle className="h-3 w-3 mr-1" />
                         Upcycle Ready
                       </Badge>
                     )}
-                    {analysisResult.condition.cloth_details.is_dirty_or_damaged ? (
+                    {analysisResult?.cloth_details?.is_dirty_or_damaged ? (
                       <Badge variant="destructive" className="text-[10px] h-5">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         Needs Repair
@@ -469,11 +537,16 @@ const AIPreview = () => {
                     )}
                   </div>
 
-                  {analysisResult.condition.cloth_details.damage_description && (
-                    <p className="text-[11px] text-muted-foreground bg-destructive/5 p-2 rounded-md">
-                      {analysisResult.condition.cloth_details.damage_description}
-                    </p>
+                  {/* Damage description */}
+                  {analysisResult?.cloth_details?.damage_description && (
+                    <div className="rounded-md bg-destructive/5 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Damage Notes</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {analysisResult.cloth_details.damage_description}
+                      </p>
+                    </div>
                   )}
+
                 </div>
               </div>
             )}
@@ -623,7 +696,7 @@ const AIPreview = () => {
 
             <Button
               onClick={handleRedesign}
-              disabled={loading || !frontFile || !backFile || apiStatus === 'offline' || (useLocal && !analysisResult?.file_id)}
+              disabled={loading || !frontFile || !backFile}
               className="w-full"
               variant="default"
             >
@@ -644,16 +717,20 @@ const AIPreview = () => {
                     Redesign Suggestions
                   </h4>
                   <div className="flex gap-1">
-                    <Badge variant="outline" className="text-[9px] h-4 font-mono">
-                      {redesignResult.file_id.slice(0, 6)}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[9px] h-4 font-mono">
-                      {redesignResult.after_file_id.slice(0, 6)}
-                    </Badge>
+                    {redesignResult?.file_id && (
+                      <Badge variant="outline" className="text-[9px] h-4 font-mono">
+                        {redesignResult.file_id.slice(0, 6)}
+                      </Badge>
+                    )}
+                    {redesignResult?.after_file_id && (
+                      <Badge variant="secondary" className="text-[9px] h-4 font-mono">
+                        {redesignResult.after_file_id.slice(0, 6)}
+                      </Badge>
+                    )}
                   </div>
                 </div>
 
-                {redesignResult.redesign_analysis?.cloth_details.redesign_suggestions?.length ? (
+                {redesignResult?.redesign_analysis?.cloth_details?.redesign_suggestions?.length ? (
                   <div className="space-y-2">
                     {redesignResult.redesign_analysis.cloth_details.redesign_suggestions.map((suggestion, i) => (
                       <div
@@ -683,39 +760,41 @@ const AIPreview = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {analysisHistory.map((item, i) => (
+                {analysisHistory.filter(item => item?.cloth_details).map((item, i) => (
                   <div
-                    key={`${item.file_id}-${i}`}
+                    key={`${item?.file_id || 'item'}-${i}`}
                     className="rounded-lg border border-border bg-card p-2.5 space-y-1.5"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Shirt className="h-3.5 w-3.5 text-primary" />
                         <span className="text-xs font-medium">
-                          {item.condition.cloth_details.cloth_type}
+                          {item?.cloth_details?.cloth_type || 'Unknown'}
                         </span>
                       </div>
                       <Badge variant="outline" className="text-[9px] h-4">
-                        {item.condition.cloth_details.cloth_fabric}
+                        {item?.cloth_details?.cloth_fabric || 'Unknown'}
                       </Badge>
                     </div>
                     <div className="flex gap-1">
-                      {item.condition.cloth_details.suitable_for_redesign && (
+                      {item?.cloth_details?.suitable_for_redesign && (
                         <Badge variant="secondary" className="text-[9px] h-4">
                           <Paintbrush className="h-2.5 w-2.5 mr-0.5" />
                           Redesign
                         </Badge>
                       )}
-                      {item.condition.cloth_details.suitable_for_upcycling && (
+                      {item?.cloth_details?.suitable_for_upcycling && (
                         <Badge variant="secondary" className="text-[9px] h-4">
                           <Recycle className="h-2.5 w-2.5 mr-0.5" />
                           Upcycle
                         </Badge>
                       )}
                     </div>
-                    <p className="text-[9px] text-muted-foreground font-mono">
-                      ID: {item.file_id.slice(0, 12)}...
-                    </p>
+                    {item?.file_id && (
+                      <p className="text-[9px] text-muted-foreground font-mono">
+                        ID: {item.file_id.slice(0, 12)}...
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -744,9 +823,11 @@ const CanvasApp = () => {
 };
 
 const Index = () => (
-  <CanvasProvider>
-    <CanvasApp />
-  </CanvasProvider>
+  <ErrorBoundary>
+    <CanvasProvider>
+      <CanvasApp />
+    </CanvasProvider>
+  </ErrorBoundary>
 );
 
 export default Index;
