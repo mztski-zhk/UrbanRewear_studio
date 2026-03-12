@@ -35,6 +35,8 @@ import React, { useEffect, useRef, useState, useCallback, useMemo, Component, Er
 import { analyzeCloth, redesignCloth, type ClothCondition, getClothDetails, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
+const REDESIGN_PLACEHOLDER_IMAGE = "https://github.com/user-attachments/assets/b0bbc5d4-75af-40e7-9d7e-f71151287826";
+
 // Error Boundary component to prevent blank page crashes
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -720,7 +722,7 @@ const AIPreview = () => {
             </Button>
 
             {/* Redesign result */}
-            {redesignResult && (
+            {redesignResult ? (
               <div className="rounded-lg border border-border bg-card p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
@@ -758,6 +760,14 @@ const AIPreview = () => {
                     No specific suggestions available
                   </p>
                 )}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-border bg-card overflow-hidden">
+                <img
+                  src={REDESIGN_PLACEHOLDER_IMAGE}
+                  alt="Redesign example"
+                  className="w-full object-cover"
+                />
               </div>
             )}
           </TabsContent>
