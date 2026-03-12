@@ -238,11 +238,6 @@ const AIPreview = () => {
       console.error('[redesign] Missing data: before images are required.');
       return;
     }
-    // For local AI, we need a file_id from a previous analysis
-    if (!analysisResult?.file_id) {
-      console.error('[redesign] Analysis required: please analyze the cloth first when using local AI.');
-      return;
-    }
     setLoading(true);
     setLoadingAction('redesign');
     setRedesignAttempted(true);
@@ -659,13 +654,6 @@ const AIPreview = () => {
                 </div>
               </div>
             </div>
-
-            {!analysisResult?.file_id && (
-              <p className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-1.5 rounded-md">
-                <AlertTriangle className="h-3 w-3 inline mr-1" />
-                Please analyze the cloth first before getting redesign suggestions. Go to the Analyze tab first.
-              </p>
-            )}
 
             <Button
               onClick={handleRedesign}
