@@ -32,7 +32,7 @@ import {
   Zap,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState, useCallback, useMemo, Component, ErrorInfo, ReactNode } from 'react';
-import { analyzeCloth, redesignCloth, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
+import { analyzeCloth, redesignCloth, type ClothCondition, getClothDetails, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
 // Error Boundary component to prevent blank page crashes
@@ -207,12 +207,14 @@ const AIPreview = () => {
       const result = await analyzeCloth(userId, frontFile, backFile, null, useLocal);
 
       setAnalysisResult(result);
-      if (result?.cloth_details) {
+      if (getClothDetails(result)) {
         setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
       }
       toast({
         title: 'Analysis complete',
-        description: `Type: ${result?.cloth_details?.cloth_type || 'Unknown'}`,
+        description: typeof result?.condition === 'string'
+          ? result.condition
+          : `Type: ${getClothDetails(result)?.cloth_type || 'Unknown'}`,
       });
     } catch (err) {
 
@@ -471,60 +473,68 @@ const AIPreview = () => {
 
                 <div className="grid gap-2">
 
+                  {/* Raw string condition fallback */}
+                  {typeof analysisResult?.condition === 'string' ? (
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Condition</p>
+                      <p className="text-xs text-foreground whitespace-pre-wrap">{analysisResult.condition}</p>
+                    </div>
+                  ) : (
+                    <>
                   {/* Type + Fabric row */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
                       <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Type</p>
                       <p className="text-xs font-medium capitalize flex items-center gap-1">
                         <Shirt className="h-3 w-3 text-primary shrink-0" />
-                        {analysisResult?.cloth_details?.cloth_type || 'Unknown'}
+                        {getClothDetails(analysisResult)?.cloth_type || 'Unknown'}
                       </p>
                     </div>
                     <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
                       <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fabric</p>
-                      <p className="text-xs font-medium">{analysisResult?.cloth_details?.cloth_fabric || 'Unknown'}</p>
+                      <p className="text-xs font-medium">{getClothDetails(analysisResult)?.cloth_fabric || 'Unknown'}</p>
                     </div>
                   </div>
 
                   {/* Color row */}
-                  {analysisResult?.cloth_details?.cloth_color && (
+                  {getClothDetails(analysisResult)?.cloth_color && (
                     <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
                       <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Color</p>
-                      <p className="text-xs font-medium">{analysisResult.cloth_details.cloth_color}</p>
+                      <p className="text-xs font-medium">{getClothDetails(analysisResult)!.cloth_color}</p>
                     </div>
                   )}
 
                   {/* Image side + is_cloth row */}
                   <div className="grid grid-cols-2 gap-2">
-                    {analysisResult?.cloth_details?.image && (
+                    {getClothDetails(analysisResult)?.image && (
                       <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
                         <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Image Side</p>
-                        <p className="text-xs font-medium capitalize">{analysisResult.cloth_details.image}</p>
+                        <p className="text-xs font-medium capitalize">{getClothDetails(analysisResult)!.image}</p>
                       </div>
                     )}
                     <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
                       <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Is Cloth</p>
                       <p className="text-xs font-medium">
-                        {analysisResult?.cloth_details?.is_cloth ? 'Yes' : 'No'}
+                        {getClothDetails(analysisResult)?.is_cloth ? 'Yes' : 'No'}
                       </p>
                     </div>
                   </div>
 
                   {/* Status badges */}
                   <div className="flex flex-wrap gap-1.5">
-                    {analysisResult?.cloth_details?.suitable_for_redesign && (
+                    {getClothDetails(analysisResult)?.suitable_for_redesign && (
                       <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-0">
                         <Paintbrush className="h-3 w-3 mr-1" />
                         Redesign Ready
                       </Badge>
                     )}
-                    {analysisResult?.cloth_details?.suitable_for_upcycling && (
+                    {getClothDetails(analysisResult)?.suitable_for_upcycling && (
                       <Badge className="text-[10px] h-5 bg-accent/10 text-accent border-0">
                         <Recycle className="h-3 w-3 mr-1" />
                         Upcycle Ready
                       </Badge>
                     )}
-                    {analysisResult?.cloth_details?.is_dirty_or_damaged ? (
+                    {getClothDetails(analysisResult)?.is_dirty_or_damaged ? (
                       <Badge variant="destructive" className="text-[10px] h-5">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         Needs Repair
@@ -538,15 +548,16 @@ const AIPreview = () => {
                   </div>
 
                   {/* Damage description */}
-                  {analysisResult?.cloth_details?.damage_description && (
+                  {getClothDetails(analysisResult)?.damage_description && (
                     <div className="rounded-md bg-destructive/5 p-2 space-y-0.5">
                       <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Damage Notes</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {analysisResult.cloth_details.damage_description}
+                        {getClothDetails(analysisResult)!.damage_description}
                       </p>
                     </div>
                   )}
-
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -760,7 +771,7 @@ const AIPreview = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {analysisHistory.filter(item => item?.cloth_details).map((item, i) => (
+                {analysisHistory.filter(item => getClothDetails(item) || typeof item?.condition === 'string').map((item, i) => (
                   <div
                     key={`${item?.file_id || 'item'}-${i}`}
                     className="rounded-lg border border-border bg-card p-2.5 space-y-1.5"
@@ -769,21 +780,21 @@ const AIPreview = () => {
                       <div className="flex items-center gap-2">
                         <Shirt className="h-3.5 w-3.5 text-primary" />
                         <span className="text-xs font-medium">
-                          {item?.cloth_details?.cloth_type || 'Unknown'}
+                          {getClothDetails(item)?.cloth_type || 'Unknown'}
                         </span>
                       </div>
                       <Badge variant="outline" className="text-[9px] h-4">
-                        {item?.cloth_details?.cloth_fabric || 'Unknown'}
+                        {getClothDetails(item)?.cloth_fabric || 'Unknown'}
                       </Badge>
                     </div>
                     <div className="flex gap-1">
-                      {item?.cloth_details?.suitable_for_redesign && (
+                      {getClothDetails(item)?.suitable_for_redesign && (
                         <Badge variant="secondary" className="text-[9px] h-4">
                           <Paintbrush className="h-2.5 w-2.5 mr-0.5" />
                           Redesign
                         </Badge>
                       )}
-                      {item?.cloth_details?.suitable_for_upcycling && (
+                      {getClothDetails(item)?.suitable_for_upcycling && (
                         <Badge variant="secondary" className="text-[9px] h-4">
                           <Recycle className="h-2.5 w-2.5 mr-0.5" />
                           Upcycle

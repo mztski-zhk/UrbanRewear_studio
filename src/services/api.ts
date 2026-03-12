@@ -159,9 +159,25 @@ export interface ClothDetails {
   suitable_for_upcycling: boolean;
 }
 
+export interface ClothConditionData {
+  cloth_details: ClothDetails;
+}
+
 export interface ClothCondition {
   file_id?: string;
-  cloth_details: ClothDetails;
+  condition: ClothConditionData | string;
+}
+
+/**
+ * Extract structured cloth details from a ClothCondition response.
+ * Returns null when condition is a raw string (pass-through from the server).
+ */
+export function getClothDetails(result: ClothCondition | null): ClothDetails | null {
+  if (!result) return null;
+  if (typeof result.condition === 'object' && result.condition !== null) {
+    return (result.condition as ClothConditionData).cloth_details ?? null;
+  }
+  return null;
 }
 
 export async function analyzeCloth(
