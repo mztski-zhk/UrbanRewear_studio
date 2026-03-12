@@ -1,5 +1,28 @@
 const BASE_URL = 'https://ur.mztski-zhk.cc/api/v1';
 
+/**
+ * Parse a JSON response that may be wrapped in markdown code fences
+ * (e.g. ```json\n...\n``` or ```\n...\n```).
+ * If parsing fails after stripping the fences, the raw string is logged
+ * and returned as-is.
+ */
+export function parseJsonWithMarkdownStrip(text: string): unknown {
+  // Strip optional markdown code fence (```json ... ``` or ``` ... ```)
+  const fenceMatch = text.match(/^```(?:\w+)?\s*([\s\S]*?)\s*```\s*$/);
+  const candidate = fenceMatch ? fenceMatch[1] : text;
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    if (fenceMatch) {
+      // Parsing the unwrapped content failed; fall back to the raw response
+      console.error('Failed to parse JSON from markdown code block, returning raw string:', text);
+    } else {
+      console.error('Failed to parse response as JSON, returning raw string:', text);
+    }
+    return text;
+  }
+}
+
 class ApiError extends Error {
   code: string;
   requestId?: string;
@@ -33,13 +56,17 @@ async function request<T>(
   }
 
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
-  
+
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
+    const errText = await res.text().catch(() => '{}');
+    const body = (() => {
+      try { return JSON.parse(errText); } catch { return {}; }
+    })();
     throw new ApiError(res.status, body);
   }
 
-  return res.json();
+  const text = await res.text();
+  return parseJsonWithMarkdownStrip(text) as T;
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────
