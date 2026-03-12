@@ -141,8 +141,7 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
       setOffset(newOffset);
       setTotalReturned(response.total_returned);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Search failed';
-      toast({ title: 'Error', description: msg, variant: 'destructive' });
+      console.error('[search] Search failed:', err instanceof ApiError ? err.message : err);
     } finally {
       setLoading(false);
     }
@@ -161,8 +160,7 @@ const SearchPanel = ({ trigger }: SearchPanelProps) => {
       setTotalReturned(response.total_returned);
       toast({ title: 'Fuzzy search', description: `Found ${response.total_returned} results with typo tolerance` });
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Search failed';
-      toast({ title: 'Error', description: msg, variant: 'destructive' });
+      console.error('[search] Fuzzy search failed:', err instanceof ApiError ? err.message : err);
     } finally {
       setLoading(false);
     }
