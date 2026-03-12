@@ -728,7 +728,7 @@ const AIPreview = () => {
                   </div>
                 </div>
 
-                {redesignResult.redesign_analysis?.cloth_details.redesign_suggestions?.length ? (
+                {redesignResult?.redesign_analysis?.cloth_details?.redesign_suggestions?.length ? (
                   <div className="space-y-2">
                     {redesignResult.redesign_analysis.cloth_details.redesign_suggestions.map((suggestion, i) => (
                       <div
@@ -767,21 +767,21 @@ const AIPreview = () => {
                       <div className="flex items-center gap-2">
                         <Shirt className="h-3.5 w-3.5 text-primary" />
                         <span className="text-xs font-medium">
-                          {item.condition.cloth_details.cloth_type}
+                          {item?.cloth_details?.cloth_type || 'Unknown'}
                         </span>
                       </div>
                       <Badge variant="outline" className="text-[9px] h-4">
-                        {item.condition.cloth_details.cloth_fabric}
+                        {item?.cloth_details?.cloth_fabric || 'Unknown'}
                       </Badge>
                     </div>
                     <div className="flex gap-1">
-                      {item.condition.cloth_details.suitable_for_redesign && (
+                      {item?.cloth_details?.suitable_for_redesign && (
                         <Badge variant="secondary" className="text-[9px] h-4">
                           <Paintbrush className="h-2.5 w-2.5 mr-0.5" />
                           Redesign
                         </Badge>
                       )}
-                      {item.condition.cloth_details.suitable_for_upcycling && (
+                      {item?.cloth_details?.suitable_for_upcycling && (
                         <Badge variant="secondary" className="text-[9px] h-4">
                           <Recycle className="h-2.5 w-2.5 mr-0.5" />
                           Upcycle
