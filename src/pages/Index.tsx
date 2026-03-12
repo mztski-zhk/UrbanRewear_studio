@@ -659,7 +659,7 @@ const AIPreview = () => {
 
             <Button
               onClick={handleRedesign}
-              disabled={loading || !frontFile || !backFile || (useLocal && !analysisResult?.file_id)}
+              disabled={loading || !frontFile || !backFile}
               className="w-full"
               variant="default"
             >
@@ -680,12 +680,16 @@ const AIPreview = () => {
                     Redesign Suggestions
                   </h4>
                   <div className="flex gap-1">
-                    <Badge variant="outline" className="text-[9px] h-4 font-mono">
-                      {redesignResult.file_id.slice(0, 6)}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[9px] h-4 font-mono">
-                      {redesignResult.after_file_id.slice(0, 6)}
-                    </Badge>
+                    {redesignResult?.file_id && (
+                      <Badge variant="outline" className="text-[9px] h-4 font-mono">
+                        {redesignResult.file_id.slice(0, 6)}
+                      </Badge>
+                    )}
+                    {redesignResult?.after_file_id && (
+                      <Badge variant="secondary" className="text-[9px] h-4 font-mono">
+                        {redesignResult.after_file_id.slice(0, 6)}
+                      </Badge>
+                    )}
                   </div>
                 </div>
 
