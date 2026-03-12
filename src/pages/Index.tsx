@@ -209,7 +209,7 @@ const AIPreview = () => {
       setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
       toast({
         title: 'Analysis complete',
-        description: `Type: ${result?.condition?.cloth_details?.cloth_type || 'Unknown'}`,
+        description: `Type: ${result?.cloth_details?.cloth_type || 'Unknown'}`,
       });
     } catch (err) {
 
@@ -471,28 +471,28 @@ const AIPreview = () => {
                     <div className="flex items-center gap-2">
                       <Shirt className="h-4 w-4 text-primary" />
                       <span className="text-xs font-medium">
-                        {analysisResult?.condition?.cloth_details?.cloth_type || 'Unknown'}
+                        {analysisResult?.cloth_details?.cloth_type || 'Unknown'}
                       </span>
                     </div>
                     <Badge variant="secondary" className="text-[10px]">
-                      {analysisResult?.condition?.cloth_details?.cloth_fabric || 'Unknown'}
+                      {analysisResult?.cloth_details?.cloth_fabric || 'Unknown'}
                     </Badge>
                   </div>
 
                   <div className="flex flex-wrap gap-1.5">
-                    {analysisResult?.condition?.cloth_details?.suitable_for_redesign && (
+                    {analysisResult?.cloth_details?.suitable_for_redesign && (
                       <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-0">
                         <Paintbrush className="h-3 w-3 mr-1" />
                         Redesign Ready
                       </Badge>
                     )}
-                    {analysisResult?.condition?.cloth_details?.suitable_for_upcycling && (
+                    {analysisResult?.cloth_details?.suitable_for_upcycling && (
                       <Badge className="text-[10px] h-5 bg-accent/10 text-accent border-0">
                         <Recycle className="h-3 w-3 mr-1" />
                         Upcycle Ready
                       </Badge>
                     )}
-                    {analysisResult?.condition?.cloth_details?.is_dirty_or_damaged ? (
+                    {analysisResult?.cloth_details?.is_dirty_or_damaged ? (
                       <Badge variant="destructive" className="text-[10px] h-5">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         Needs Repair
@@ -505,9 +505,9 @@ const AIPreview = () => {
                     )}
                   </div>
 
-                  {analysisResult?.condition?.cloth_details?.damage_description && (
+                  {analysisResult?.cloth_details?.damage_description && (
                     <p className="text-[11px] text-muted-foreground bg-destructive/5 p-2 rounded-md">
-                      {analysisResult.condition.cloth_details.damage_description}
+                      {analysisResult.cloth_details.damage_description}
                     </p>
                   )}
                 </div>
