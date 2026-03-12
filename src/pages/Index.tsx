@@ -457,7 +457,7 @@ const AIPreview = () => {
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
                     <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
-                    Analysis Result
+                    Cloth Condition
                   </h4>
                   {analysisResult?.file_id && (
                     <Badge variant="outline" className="text-[9px] h-4 font-mono">
@@ -466,19 +466,48 @@ const AIPreview = () => {
                   )}
                 </div>
 
-                  <div className="grid gap-2">
-                  <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                    <div className="flex items-center gap-2">
-                      <Shirt className="h-4 w-4 text-primary" />
-                      <span className="text-xs font-medium">
+                <div className="grid gap-2">
+
+                  {/* Type + Fabric row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Type</p>
+                      <p className="text-xs font-medium capitalize flex items-center gap-1">
+                        <Shirt className="h-3 w-3 text-primary shrink-0" />
                         {analysisResult?.cloth_details?.cloth_type || 'Unknown'}
-                      </span>
+                      </p>
                     </div>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {analysisResult?.cloth_details?.cloth_fabric || 'Unknown'}
-                    </Badge>
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fabric</p>
+                      <p className="text-xs font-medium">{analysisResult?.cloth_details?.cloth_fabric || 'Unknown'}</p>
+                    </div>
                   </div>
 
+                  {/* Color row */}
+                  {analysisResult?.cloth_details?.cloth_color && (
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Color</p>
+                      <p className="text-xs font-medium">{analysisResult.cloth_details.cloth_color}</p>
+                    </div>
+                  )}
+
+                  {/* Image side + is_cloth row */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {analysisResult?.cloth_details?.image && (
+                      <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Image Side</p>
+                        <p className="text-xs font-medium capitalize">{analysisResult.cloth_details.image}</p>
+                      </div>
+                    )}
+                    <div className="rounded-md bg-muted/50 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Is Cloth</p>
+                      <p className="text-xs font-medium">
+                        {analysisResult?.cloth_details?.is_cloth ? 'Yes' : 'No'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status badges */}
                   <div className="flex flex-wrap gap-1.5">
                     {analysisResult?.cloth_details?.suitable_for_redesign && (
                       <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-0">
@@ -505,11 +534,16 @@ const AIPreview = () => {
                     )}
                   </div>
 
+                  {/* Damage description */}
                   {analysisResult?.cloth_details?.damage_description && (
-                    <p className="text-[11px] text-muted-foreground bg-destructive/5 p-2 rounded-md">
-                      {analysisResult.cloth_details.damage_description}
-                    </p>
+                    <div className="rounded-md bg-destructive/5 p-2 space-y-0.5">
+                      <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Damage Notes</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {analysisResult.cloth_details.damage_description}
+                      </p>
+                    </div>
                   )}
+
                 </div>
               </div>
             )}
