@@ -168,16 +168,16 @@ const AIPreview = () => {
       const interval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 90) return prev;
-          return prev + Math.random() * 15;
+          return prev + Math.random() * 8;
         });
-      }, 500);
+      }, 300);
       return () => clearInterval(interval);
     } else {
       setProgress(100);
       const timeout = setTimeout(() => {
         setProgress(0);
         setDisplayResults(true);
-      }, 500);
+      }, 300);
       return () => clearTimeout(timeout);
     }
   }, [loading]);
@@ -214,7 +214,7 @@ const AIPreview = () => {
         condition: {
           cloth_details: {
             image: 'front',
-            is_cloth: false,
+            is_cloth: true,
             cloth_type: 'dress',
             cloth_fabric: 'sheer cotton or rayon with floral print',
             cloth_color: 'white base with blue and gray floral pattern; light blue accents',
@@ -260,7 +260,7 @@ const AIPreview = () => {
       setRedesignResult(result);
       toast({
         title: 'Redesign complete',
-        description: 'AI suggestions are ready!',
+        description: 'AI redesign is ready!',
       });
     } catch (err) {
       const apiError = err instanceof ApiError ? err : null;
@@ -311,7 +311,7 @@ const AIPreview = () => {
           <div className="space-y-1">
             <Progress value={progress} className="h-1" />
             <p className="text-[10px] text-muted-foreground text-center">
-              {loadingAction === 'analyze' ? 'Analyzing cloth condition...' : 'Generating redesign suggestions...'}
+              {loadingAction === 'analyze' ? 'Analyzing cloth condition...' : 'Generating redesign result...'}
             </p>
           </div>
         )}
