@@ -34,7 +34,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo, Component, Er
 import { analyzeCloth, redesignCloth, type ClothCondition, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
-// Error Boundary to prevent blank page crashes
+// Error Boundary component to prevent blank page crashes
 interface ErrorBoundaryProps {
   children: ReactNode;
 }
