@@ -55,7 +55,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[v0] Error caught by boundary:', error, errorInfo);
+    console.error('[v0] Error caught by boundary:', error);
   }
 
   render() {
@@ -65,18 +65,20 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
           <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
           <h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
           <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            {this.state.error?.message || 'An unexpected error occurred'}
+            Please refresh the page to continue
           </p>
-          <Button onClick={() => this.setState({ hasError: false, error: null })}>
-            Try Again
-          </Button>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
+          >
+            Refresh Page
+          </button>
         </div>
       );
     }
 
     return this.props.children;
   }
-}
 
 interface ImagePreviewProps {
   file: File | null;
