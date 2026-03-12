@@ -657,7 +657,7 @@ const AIPreview = () => {
 
             <Button
               onClick={handleRedesign}
-              disabled={loading || !frontFile || !backFile || apiStatus === 'offline' || (useLocal && !analysisResult?.file_id)}
+              disabled={loading || !frontFile || !backFile || (useLocal && !analysisResult?.file_id)}
               className="w-full"
               variant="default"
             >
