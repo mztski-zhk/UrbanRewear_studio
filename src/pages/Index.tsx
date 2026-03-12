@@ -135,6 +135,7 @@ const AIPreview = () => {
   const [progress, setProgress] = useState(0);
   const [analysisResult, setAnalysisResult] = useState<ClothCondition | null>(null);
   const [redesignResult, setRedesignResult] = useState<RedesignResult | null>(null);
+  const [redesignAttempted, setRedesignAttempted] = useState(false);
   const [analysisHistory, setAnalysisHistory] = useState<ClothCondition[]>([]);
   const frontRef = useRef<HTMLInputElement>(null);
   const backRef = useRef<HTMLInputElement>(null);
@@ -241,6 +242,7 @@ const AIPreview = () => {
     }
     setLoading(true);
     setLoadingAction('redesign');
+    setRedesignAttempted(true);
     setRedesignResult(null);
     try {
       const userId = guestId;
@@ -745,7 +747,7 @@ const AIPreview = () => {
                   </p>
                 )}
               </div>
-            ) : (
+            ) : redesignAttempted ? (
               <div className="rounded-lg border border-border bg-card overflow-hidden">
                 <img
                   src={REDESIGN_PLACEHOLDER_IMAGE}
@@ -753,7 +755,7 @@ const AIPreview = () => {
                   className="w-full object-cover"
                 />
               </div>
-            )}
+            ) : null}
           </TabsContent>
 
           {/* History tab */}
