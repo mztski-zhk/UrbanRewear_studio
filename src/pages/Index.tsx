@@ -207,7 +207,9 @@ const AIPreview = () => {
       const result = await analyzeCloth(userId, frontFile, backFile, null, useLocal);
 
       setAnalysisResult(result);
-      setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
+      if (result?.cloth_details) {
+        setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
+      }
       toast({
         title: 'Analysis complete',
         description: `Type: ${result?.cloth_details?.cloth_type || 'Unknown'}`,
@@ -758,9 +760,9 @@ const AIPreview = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {analysisHistory.map((item, i) => (
+                {analysisHistory.filter(item => item?.cloth_details).map((item, i) => (
                   <div
-                    key={`${item.file_id}-${i}`}
+                    key={`${item?.file_id || 'item'}-${i}`}
                     className="rounded-lg border border-border bg-card p-2.5 space-y-1.5"
                   >
                     <div className="flex items-center justify-between">
