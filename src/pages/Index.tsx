@@ -29,7 +29,6 @@ import {
   FileImage,
   Trash2,
   History,
-  Zap,
 } from 'lucide-react';
 import React, { useEffect, useRef, useState, useCallback, useMemo, Component, ErrorInfo, ReactNode } from 'react';
 import { analyzeCloth, redesignCloth, type ClothCondition, getClothDetails, type RedesignResult, ApiError } from '@/services/api';
@@ -145,7 +144,7 @@ const AIPreview = () => {
   const [backFile, setBackFile] = useState<File | null>(null);
   const [afterFrontFile, setAfterFrontFile] = useState<File | null>(null);
   const [afterBackFile, setAfterBackFile] = useState<File | null>(null);
-  const [useLocal, setUseLocal] = useState(false);
+  const [displayResults, setDisplayResults] = useState(false);
 
   useEffect(() => {
     if (stageRef.current && stageRef.current !== null) {
@@ -165,6 +164,7 @@ const AIPreview = () => {
   useEffect(() => {
     if (loading) {
       setProgress(0);
+      setDisplayResults(false);
       const interval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 90) return prev;
@@ -174,7 +174,10 @@ const AIPreview = () => {
       return () => clearInterval(interval);
     } else {
       setProgress(100);
-      const timeout = setTimeout(() => setProgress(0), 500);
+      const timeout = setTimeout(() => {
+        setProgress(0);
+        setDisplayResults(true);
+      }, 500);
       return () => clearTimeout(timeout);
     }
   }, [loading]);
@@ -189,7 +192,7 @@ const AIPreview = () => {
     setAnalysisResult(null);
     try {
       const userId = guestId;
-      const result = await analyzeCloth(userId, frontFile, backFile, null, useLocal);
+      const result = await analyzeCloth(userId, frontFile, backFile, null, true);
 
       setAnalysisResult(result);
       if (getClothDetails(result)) {
@@ -228,7 +231,7 @@ const AIPreview = () => {
       setLoading(false);
       setLoadingAction(null);
     }
-  }, [frontFile, backFile, useLocal, guestId]);
+  }, [frontFile, backFile, guestId]);
 
   const handleRedesign = useCallback(async () => {
     if (!frontFile || !backFile) {
@@ -236,7 +239,7 @@ const AIPreview = () => {
       return;
     }
     // For local AI, we need a file_id from a previous analysis
-    if (useLocal && !analysisResult?.file_id) {
+    if (!analysisResult?.file_id) {
       console.error('[redesign] Analysis required: please analyze the cloth first when using local AI.');
       return;
     }
@@ -255,8 +258,8 @@ const AIPreview = () => {
           after_back: afterBackFile || undefined,
         },
         null,
-        useLocal,
-        useLocal ? analysisResult?.file_id : undefined
+        true,
+        analysisResult?.file_id
       );
 
       setRedesignResult(result);
@@ -271,7 +274,7 @@ const AIPreview = () => {
       setLoading(false);
       setLoadingAction(null);
     }
-  }, [frontFile, backFile, afterFrontFile, afterBackFile, useLocal, analysisResult, guestId]);
+  }, [frontFile, backFile, afterFrontFile, afterBackFile, analysisResult, guestId]);
 
   const clearAll = () => {
     setFrontFile(null);
@@ -289,12 +292,6 @@ const AIPreview = () => {
         {/* Status bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {useLocal && (
-              <Badge variant="outline" className="text-[10px] h-5">
-                <Zap className="h-3 w-3 mr-1" />
-                Local AI
-              </Badge>
-            )}
           </div>
           <div className="flex items-center gap-1">
             <ObjectsGallery
@@ -315,7 +312,7 @@ const AIPreview = () => {
         </div>
 
         {/* Progress bar */}
-        {loading && (
+        {(loading || progress > 0) && (
           <div className="space-y-1">
             <Progress value={progress} className="h-1" />
             <p className="text-[10px] text-muted-foreground text-center">
@@ -413,17 +410,7 @@ const AIPreview = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useLocal}
-                  onChange={(e) => setUseLocal(e.target.checked)}
-                  className="rounded"
-                />
-                <Zap className="h-3 w-3" />
-                Use local AI (faster)
-              </label>
+            <div className="flex items-center justify-end">
               {(frontFile || backFile) && (
                 <Button variant="ghost" size="sm" className="h-6 text-[10px] text-muted-foreground" onClick={clearAll}>
                   Clear all
@@ -445,7 +432,7 @@ const AIPreview = () => {
             </Button>
 
             {/* Analysis result */}
-            {analysisResult && (
+            {displayResults && analysisResult && (
               <div className="rounded-lg border border-border bg-card p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
@@ -673,23 +660,10 @@ const AIPreview = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useLocal}
-                  onChange={(e) => setUseLocal(e.target.checked)}
-                  className="rounded"
-                />
-                <Zap className="h-3 w-3" />
-                Use local AI
-              </label>
-            </div>
-
-            {useLocal && !analysisResult?.file_id && (
+            {!analysisResult?.file_id && (
               <p className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-1.5 rounded-md">
                 <AlertTriangle className="h-3 w-3 inline mr-1" />
-                Local AI requires analyzing the cloth first. Go to the Analyze tab first.
+                Please analyze the cloth first before getting redesign suggestions. Go to the Analyze tab first.
               </p>
             )}
 
@@ -708,7 +682,7 @@ const AIPreview = () => {
             </Button>
 
             {/* Redesign result */}
-            {redesignResult ? (
+            {displayResults && redesignResult ? (
               <div className="rounded-lg border border-border bg-card p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-foreground flex items-center gap-1">
@@ -747,7 +721,7 @@ const AIPreview = () => {
                   </p>
                 )}
               </div>
-            ) : redesignAttempted ? (
+            ) : displayResults && redesignAttempted ? (
               <div className="rounded-lg border border-border bg-card overflow-hidden">
                 <img
                   src={REDESIGN_PLACEHOLDER_IMAGE}
