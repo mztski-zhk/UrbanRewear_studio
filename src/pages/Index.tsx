@@ -81,6 +81,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
+// Props for image preview component
 interface ImagePreviewProps {
   file: File | null;
   label: string;
