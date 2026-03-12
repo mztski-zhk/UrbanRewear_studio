@@ -35,7 +35,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo, Component, Er
 import { analyzeCloth, redesignCloth, type ClothCondition, getClothDetails, type RedesignResult, ApiError } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 
-const REDESIGN_PLACEHOLDER_IMAGE = "https://github.com/user-attachments/assets/b0bbc5d4-75af-40e7-9d7e-f71151287826";
+const REDESIGN_PLACEHOLDER_IMAGE = "https://objdb.mztski-zhk.cc/wmremove-transformed.png";
 
 // Error Boundary component to prevent blank page crashes
 interface ErrorBoundaryProps {
