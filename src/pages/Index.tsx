@@ -58,26 +58,12 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[v0] Error caught by boundary:', error);
+    console.error('[v0] Error caught by boundary:', error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="h-screen flex flex-col items-center justify-center bg-background p-4">
-          <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-          <h2 className="text-lg font-semibold mb-2">Something went wrong</h2>
-          <p className="text-sm text-muted-foreground mb-4 text-center max-w-md">
-            Please refresh the page to continue
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-md"
-          >
-            Refresh Page
-          </button>
-        </div>
-      );
+      return null;
     }
 
     return this.props.children;
@@ -194,11 +180,7 @@ const AIPreview = () => {
 
   const handleAnalyze = useCallback(async () => {
     if (!frontFile || !backFile) {
-      toast({
-        title: 'Missing data',
-        description: 'Please upload front and back images.',
-        variant: 'destructive',
-      });
+      console.error('[analyze] Missing data: front and back images are required.');
       return;
     }
     setLoading(true);
@@ -212,6 +194,9 @@ const AIPreview = () => {
       if (getClothDetails(result)) {
         setAnalysisHistory(prev => [result, ...prev].slice(0, 5));
       }
+      if (typeof result?.condition === 'object' && result.condition !== null) {
+        console.log(JSON.stringify(result.condition, null, 4));
+      }
       toast({
         title: 'Analysis complete',
         description: typeof result?.condition === 'string'
@@ -219,14 +204,9 @@ const AIPreview = () => {
           : `Type: ${getClothDetails(result)?.cloth_type || 'Unknown'}`,
       });
     } catch (err) {
-
       const apiError = err instanceof ApiError ? err : null;
-      toast({
-        title: 'Analysis failed',
-        description: apiError?.message || (err instanceof Error ? err.message : 'An error occurred'),
-        variant: 'destructive',
-      });
-      setAnalysisResult({
+      console.error('[analyze] Analysis failed:', apiError?.message || (err instanceof Error ? err.message : err));
+      const fallback: ClothCondition = {
         condition: {
           cloth_details: {
             image: 'front',
@@ -240,7 +220,9 @@ const AIPreview = () => {
             suitable_for_upcycling: true,
           },
         },
-      });
+      };
+      setAnalysisResult(fallback);
+      console.log(JSON.stringify(fallback.condition, null, 4));
     } finally {
       setLoading(false);
       setLoadingAction(null);
@@ -249,20 +231,12 @@ const AIPreview = () => {
 
   const handleRedesign = useCallback(async () => {
     if (!frontFile || !backFile) {
-      toast({
-        title: 'Missing data',
-        description: 'Please upload before images first.',
-        variant: 'destructive',
-      });
+      console.error('[redesign] Missing data: before images are required.');
       return;
     }
     // For local AI, we need a file_id from a previous analysis
     if (useLocal && !analysisResult?.file_id) {
-      toast({
-        title: 'Analysis required',
-        description: 'Please analyze the cloth first when using local AI.',
-        variant: 'destructive',
-      });
+      console.error('[redesign] Analysis required: please analyze the cloth first when using local AI.');
       return;
     }
     setLoading(true);
@@ -289,13 +263,8 @@ const AIPreview = () => {
         description: 'AI suggestions are ready!',
       });
     } catch (err) {
-
       const apiError = err instanceof ApiError ? err : null;
-      toast({
-        title: 'Redesign failed',
-        description: apiError?.message || (err instanceof Error ? err.message : 'An error occurred'),
-        variant: 'destructive',
-      });
+      console.error('[redesign] Redesign failed:', apiError?.message || (err instanceof Error ? err.message : err));
     } finally {
       setLoading(false);
       setLoadingAction(null);
