@@ -120,19 +120,21 @@ export async function deleteAccount(uid: string, token: string) {
 }
 
 // Cloth Analysis
+export interface ClothDetails {
+  image?: string;
+  is_cloth?: boolean;
+  cloth_type: string;
+  cloth_fabric: string;
+  cloth_color?: string;
+  is_dirty_or_damaged: boolean;
+  damage_description?: string;
+  suitable_for_redesign: boolean;
+  suitable_for_upcycling: boolean;
+}
+
 export interface ClothCondition {
-  file_id: string;
-  condition: {
-    cloth_details: {
-      image: string;
-      cloth_type: string;
-      cloth_fabric: string;
-      is_dirty_or_damaged: boolean;
-      damage_description?: string;
-      suitable_for_redesign: boolean;
-      suitable_for_upcycling: boolean;
-    };
-  };
+  file_id?: string;
+  cloth_details: ClothDetails;
 }
 
 export async function analyzeCloth(
