@@ -79,6 +79,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
     return this.props.children;
   }
+}
 
 interface ImagePreviewProps {
   file: File | null;
